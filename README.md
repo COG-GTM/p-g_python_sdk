@@ -21,7 +21,7 @@ This SDK simplifies integration with UID2 for Publishers, DSPs and UID Sharers, 
 
 ## Requirements
 
-This SDK supports Python 3.6 and above.
+This SDK supports Python 3.8 and above.
 
 ## Install
 
@@ -36,7 +36,7 @@ For documentation on usage, see the [UID2 SDK for Python Reference Guide](https:
 
 ## Development
 
-First, build the Docker image with Python 3.6 and all dev dependencies. This is required for all subsequent commands. Run the following:
+First, build the Docker image with Python 3.8 and all dev dependencies. This is required for all subsequent commands. Run the following:
 
 ```
 make docker
@@ -54,7 +54,7 @@ Build a bdist wheel:
 make wheel
 ```
 
-Get access to an interactive shell within the Python 3.6 Docker image:
+Get access to an interactive shell within the Python 3.8 Docker image:
 
 ```
 make shell
