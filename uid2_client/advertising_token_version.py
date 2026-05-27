@@ -1,5 +1,6 @@
 from enum import IntEnum
 
+
 class AdvertisingTokenVersion(IntEnum):
     # showing as "AHA..." in the Base64 Encoding (Base64 'H' is 000111 and 112 is 01110000)
     ADVERTISING_TOKEN_V3 = 112

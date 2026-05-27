@@ -3,18 +3,24 @@
 Do not use this module directly, import from uid2_client instead, e.g.
 >>> from uid2_client import decrypt
 """
+from __future__ import annotations
 
 import base64
 import datetime as dt
-from datetime import timezone
 import os
-from Crypto.Cipher import AES
+from datetime import timezone
 from enum import Enum
+from typing import TYPE_CHECKING, Optional
+
+from Crypto.Cipher import AES
 
 from uid2_client.advertising_token_version import AdvertisingTokenVersion
-from uid2_client.uid2_base64_url_coder import Uid2Base64UrlCoder
-from uid2_client.identity_type import IdentityType
 from uid2_client.identity_scope import IdentityScope
+from uid2_client.identity_type import IdentityType
+from uid2_client.uid2_base64_url_coder import Uid2Base64UrlCoder
+
+if TYPE_CHECKING:
+    from uid2_client.keys import EncryptionKey, EncryptionKeysCollection
 
 encryption_block_size = AES.block_size
 """int: block size for encryption routines
@@ -33,7 +39,7 @@ base64_url_special_chars = {"-", "_"}
 
 
 # DEPRECATED, DO NOT CALL DIRECTLY. PLEASE USE Uid2Client's client.decrypt()
-def decrypt(token, keys, now=dt.datetime.now(tz=timezone.utc)):
+def decrypt(token: str, keys: EncryptionKeysCollection, now: Optional[dt.datetime] = None) -> DecryptedToken:
     """Decrypt advertising token to extract UID2 details.
 
     Args:
@@ -48,6 +54,8 @@ def decrypt(token, keys, now=dt.datetime.now(tz=timezone.utc)):
         EncryptionError: if token version is not supported, the token has expired,
                          or no required decryption keys present in the keys collection
     """
+    if now is None:
+        now = dt.datetime.now(tz=timezone.utc)
 
     try:
         return _decrypt_token(token, keys, now)
@@ -57,7 +65,7 @@ def decrypt(token, keys, now=dt.datetime.now(tz=timezone.utc)):
         raise EncryptionError('invalid payload') from exc
 
 
-def _decrypt_token(token, keys, now):
+def _decrypt_token(token: str, keys: EncryptionKeysCollection, now: dt.datetime) -> DecryptedToken:
     if not keys.valid(now):
         raise EncryptionError('no keys available or all keys have expired; refresh the latest keys from UID2 service')
 
@@ -77,7 +85,7 @@ def _decrypt_token(token, keys, now):
         raise EncryptionError('token version not supported')
 
 
-def _decrypt_token_v2(token_bytes, keys, now):
+def _decrypt_token_v2(token_bytes: bytes, keys: EncryptionKeysCollection, now: dt.datetime) -> DecryptedToken:
     master_key_id = int.from_bytes(token_bytes[1:5], 'big')
     master_key = keys.get(master_key_id)
     if master_key is None:
@@ -111,7 +119,7 @@ def _decrypt_token_v2(token_bytes, keys, now):
     return DecryptedToken(id_str, established, site_id, site_key.site_id)
 
 
-def _decrypt_token_v3(token_bytes, keys, now):
+def _decrypt_token_v3(token_bytes: bytes, keys: EncryptionKeysCollection, now: dt.datetime) -> DecryptedToken:
     master_key_id = int.from_bytes(token_bytes[2:6], 'big')
     master_key = keys.get(master_key_id)
     if master_key is None:
@@ -151,7 +159,16 @@ def _decrypt_token_v3(token_bytes, keys, now):
     return DecryptedToken(id_str, established, site_id, site_key.site_id)
 
 
-def _encrypt_token(uid2, identity_scope, master_key, site_key, site_id, now, token_expiry, ad_token_version):
+def _encrypt_token(
+    uid2: str,
+    identity_scope: IdentityScope,
+    master_key: EncryptionKey,
+    site_key: EncryptionKey,
+    site_id: int,
+    now: dt.datetime,
+    token_expiry: dt.datetime,
+    ad_token_version: AdvertisingTokenVersion,
+) -> str:
     site_payload = bytearray(128)
     # Publisher Data
     site_payload[0:4] = int.to_bytes(site_id, byteorder='big', length=4)  # Site id
@@ -190,11 +207,17 @@ def _encrypt_token(uid2, identity_scope, master_key, site_key, site_id, now, tok
     if ad_token_version == AdvertisingTokenVersion.ADVERTISING_TOKEN_V4:
         return Uid2Base64UrlCoder.encode(root_writer)
 
-    return base64.b64encode(root_writer)
+    return base64.b64encode(root_writer).decode('ascii')
 
 
 # DEPRECATED, DO NOT CALL DIRECTLY. PLEASE USE Uid2Client's client.encrypt()
-def encrypt(uid2, identity_scope, keys, keyset_id=None, **kwargs):
+def encrypt(
+    uid2: str,
+    identity_scope: IdentityScope,
+    keys: EncryptionKeysCollection,
+    keyset_id: Optional[int] = None,
+    **kwargs,
+) -> str:
     """ Encrypt an UID2 into a sharing token
 
     Args:
@@ -223,16 +246,18 @@ def encrypt(uid2, identity_scope, keys, keyset_id=None, **kwargs):
 
     site_id = keys.get_caller_site_id()
     if site_id is None:
-        print("No Site ID in keys")
-        return
+        raise EncryptionError("No Site ID in keys")
 
     if key is None:
         raise EncryptionError("No Keyset Key Found")
 
+    if master_key is None:
+        raise EncryptionError("No Master Keyset Key Found")
+
     return _encrypt_token(uid2, identity_scope, master_key, key, site_id, now, token_expiry, ad_token_version)
 
 
-def encrypt_data(data, identity_scope, **kwargs):
+def encrypt_data(data: bytes, identity_scope: IdentityScope, **kwargs) -> str:
     """Encrypt arbitrary binary data.
 
     The data can be decrypted with decrypt_data() function.
@@ -284,6 +309,8 @@ def encrypt_data(data, identity_scope, **kwargs):
         advertising_token = kwargs.get("advertising_token")
         if site_id is not None and advertising_token is not None:
             raise ValueError("only one of site_id and advertising_token can be specified")
+        if keys is None:
+            raise ValueError("keys must be specified when key is not provided")
         if advertising_token is not None:
             decrypted_token = decrypt(advertising_token, keys, now)
             site_id = decrypted_token.site_id
@@ -302,6 +329,8 @@ def encrypt_data(data, identity_scope, **kwargs):
     iv = kwargs.get("iv")
     if iv is None:
         iv = os.urandom(12)
+    if site_id is None:
+        raise EncryptionError("site_id must be provided")
 
     payload = int.to_bytes(int(now.timestamp() * 1000), 8, 'big')
     payload += int.to_bytes(site_id, 4, 'big')
@@ -315,11 +344,11 @@ def encrypt_data(data, identity_scope, **kwargs):
     return base64.b64encode(result).decode('ascii')
 
 
-def _encrypt_data_v1(data, key, iv):
+def _encrypt_data_v1(data: bytes, key: EncryptionKey, iv: bytes) -> bytes:
     return int.to_bytes(key.key_id, 4, 'big') + iv + _encrypt(data, iv, key)
 
 
-def decrypt_data(encrypted_data, keys):
+def decrypt_data(encrypted_data: str, keys: EncryptionKeysCollection) -> DecryptedData:
     """Decrypt data encrypted with encrypt_data().
 
     Args:
@@ -341,7 +370,7 @@ def decrypt_data(encrypted_data, keys):
         raise EncryptionError('invalid payload') from exc
 
 
-def _decrypt_data(encrypted_data, keys):
+def _decrypt_data(encrypted_data: str, keys: EncryptionKeysCollection) -> DecryptedData:
     encrypted_bytes = base64.b64decode(encrypted_data)
     if (encrypted_bytes[0] & 224) == _PayloadType.ENCRYPTED_DATA_V3.value:
         return _decrypt_data_v3(encrypted_bytes, keys)
@@ -349,7 +378,7 @@ def _decrypt_data(encrypted_data, keys):
         return _decrypt_data_v2(encrypted_bytes, keys)
 
 
-def _decrypt_data_v2(encrypted_bytes, keys):
+def _decrypt_data_v2(encrypted_bytes: bytes, keys: EncryptionKeysCollection) -> DecryptedData:
     if encrypted_bytes[0] != _PayloadType.ENCRYPTED_DATA.value:
         raise EncryptionError("incorrect content type")
 
@@ -367,7 +396,7 @@ def _decrypt_data_v2(encrypted_bytes, keys):
     return DecryptedData(data, encrypted_at)
 
 
-def _decrypt_data_v3(encrypted_bytes, keys):
+def _decrypt_data_v3(encrypted_bytes: bytes, keys: EncryptionKeysCollection) -> DecryptedData:
     version = encrypted_bytes[1]
     if version != 112:
         raise EncryptionError("unsupported encrypted data format/version")
@@ -386,17 +415,17 @@ def _decrypt_data_v3(encrypted_bytes, keys):
     return DecryptedData(payload[12:], encrypted_at)
 
 
-def _add_pkcs7_padding(data, block_size):
+def _add_pkcs7_padding(data: bytes, block_size: int) -> bytes:
     pad_len = block_size - (len(data) % block_size)
     return data + bytes([pad_len]) * pad_len
 
 
-def _encrypt(data, iv, key):
+def _encrypt(data: bytes, iv: bytes, key: EncryptionKey) -> bytes:
     cipher = AES.new(key.secret, AES.MODE_CBC, IV=iv)
     return cipher.encrypt(_add_pkcs7_padding(data, AES.block_size))
 
 
-def _decrypt(encrypted, iv, key):
+def _decrypt(encrypted: bytes, iv: bytes, key: EncryptionKey) -> bytes:
     cipher = AES.new(key.secret, AES.MODE_CBC, iv=iv)
     data = cipher.decrypt(encrypted)
     # remove pkcs7 padding
@@ -404,17 +433,17 @@ def _decrypt(encrypted, iv, key):
     return data[:-pad_len]
 
 
-def _encrypt_gcm(data, iv, secret):
+def _encrypt_gcm(data: bytes, iv: Optional[bytes], secret: bytes) -> bytes:
     if iv is None:
         iv = os.urandom(12)
     elif len(iv) != 12:
         raise ValueError("iv must be 12 bytes")
     cipher = AES.new(secret, AES.MODE_GCM, nonce=iv)
     ciphertext, tag = cipher.encrypt_and_digest(data)
-    return cipher.nonce + ciphertext + tag
+    return bytes(cipher.nonce) + ciphertext + tag
 
 
-def _decrypt_gcm(encrypted, secret):
+def _decrypt_gcm(encrypted: bytes, secret: bytes) -> bytes:
     cipher = AES.new(secret, AES.MODE_GCM, nonce=encrypted[:12])
     return cipher.decrypt_and_verify(encrypted[12:-16], encrypted[-16:])
 
@@ -433,7 +462,7 @@ class DecryptedToken:
         site_key_site_id (int): site ID of the site key which the token is encrypted with
     """
 
-    def __init__(self, uid2, established, site_id, site_key_site_id):
+    def __init__(self, uid2: str, established: dt.datetime, site_id: int, site_key_site_id: int) -> None:
         self.uid2 = uid2
         self.established = established
         self.site_id = site_id
@@ -448,6 +477,6 @@ class DecryptedData:
         encrypted_at (datetime): UTC date/time for when the data was encrypted
     """
 
-    def __init__(self, data, encrypted_at):
+    def __init__(self, data: bytes, encrypted_at: dt.datetime) -> None:
         self.data = data
         self.encrypted_at = encrypted_at

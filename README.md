@@ -21,7 +21,7 @@ This SDK simplifies integration with UID2 for Publishers, DSPs and UID Sharers, 
 
 ## Requirements
 
-This SDK supports Python 3.6 and above.
+This SDK supports Python 3.8 and above.
 
 ## Install
 
@@ -34,9 +34,37 @@ pip install uid2-client
 
 For documentation on usage, see the [UID2 SDK for Python Reference Guide](https://unifiedid.com/docs/sdks/uid2-sdk-ref-python).
 
+### Async Support
+
+For async/await usage, install the optional async dependency:
+
+```
+pip install uid2-client[async]
+```
+
+Then use the async client:
+
+```python
+import asyncio
+from uid2_client.async_client import AsyncUid2Client
+
+async def main():
+    client = AsyncUid2Client.create_uid2(
+        'https://prod.uidapi.com', 'my-authorization-key', 'my-secret-key'
+    )
+    keys = await client.refresh_keys()
+
+    # Encrypt/decrypt operations are synchronous (CPU-bound)
+    token = client.encrypt(raw_uid)
+    result = client.decrypt(advertising_token)
+    print(result.uid2)
+
+asyncio.run(main())
+```
+
 ## Development
 
-First, build the Docker image with Python 3.6 and all dev dependencies. This is required for all subsequent commands. Run the following:
+First, build the Docker image with Python 3.8+ and all dev dependencies. This is required for all subsequent commands. Run the following:
 
 ```
 make docker
@@ -54,7 +82,7 @@ Build a bdist wheel:
 make wheel
 ```
 
-Get access to an interactive shell within the Python 3.6 Docker image:
+Get access to an interactive shell within the Python 3.8+ Docker image:
 
 ```
 make shell

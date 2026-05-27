@@ -15,7 +15,8 @@ class TokenRefreshResponse:
             raise Exception("Got unexpected token refresh status: " + self.status)
 
         self.refreshed_identity = IdentityTokens.from_json(self.get_body_as_json(response_json))
-        if not self.refreshed_identity.is_refreshable_impl(timestamp) or self.refreshed_identity.has_identity_expired(timestamp):
+        if (not self.refreshed_identity.is_refreshable_impl(timestamp)
+                or self.refreshed_identity.has_identity_expired(timestamp)):
             raise Exception("Invalid identity in token refresh response: " + response)
 
     def get_identity_json_string(self):

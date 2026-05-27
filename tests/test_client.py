@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from test_utils import *
 from uid2_client import *
+from uid2_client import encryption
 from uid2_client.encryption import _encrypt_gcm, _decrypt_gcm
 from uid2_client.euid_client_factory import EuidClientFactory
 from uid2_client.uid2_client_factory import Uid2ClientFactory
@@ -28,7 +29,7 @@ class TestClient(unittest.TestCase):
 
         return self.MockPostResponse(envelope)
 
-    def _get_post_refresh_keys_response(self, base_url, path, headers, data):
+    def _get_post_refresh_keys_response(self, base_url, path, headers, data, **kwargs):
         response_payload = key_set_to_json_for_sharing([master_key, site_key]).encode()
         return self._make_post_response(data, response_payload)
 
@@ -92,7 +93,7 @@ class TestClient(unittest.TestCase):
 
         ad_token = client.encrypt(example_uid)
 
-        def get_post_refresh_keys_response_with_header(base_url, path, headers, data):
+        def get_post_refresh_keys_response_with_header(base_url, path, headers, data, **kwargs):
             response_payload = key_set_to_json_for_sharing_with_header('"default_keyset_id": 12345,', 4874,
                                                                        [master_key, site_key]).encode()
             return self._make_post_response(data, response_payload)
@@ -153,7 +154,7 @@ class TestClient(unittest.TestCase):
 
     @patch('uid2_client.client.post')
     def test_multiple_keys_per_keyset(self, mock_post):
-        def get_post_refresh_keys_response_with_multiple_keys(base_url, path, headers, data):
+        def get_post_refresh_keys_response_with_multiple_keys(base_url, path, headers, data, **kwargs):
             response_payload = key_set_to_json_for_sharing([master_key, site_key, master_key2, site_key2]).encode()
             return self._make_post_response(data, response_payload)
 
@@ -168,7 +169,7 @@ class TestClient(unittest.TestCase):
 
     @patch('uid2_client.client.post')
     def test_cannot_encrypt_if_no_key_from_default_keyset(self, mock_post):
-        def get_post_refresh_keys_response_with_no_default_keyset_key(base_url, path, headers, data):
+        def get_post_refresh_keys_response_with_no_default_keyset_key(base_url, path, headers, data, **kwargs):
             response_payload = key_set_to_json_for_sharing([master_key]).encode()
             return self._make_post_response(data, response_payload)
 
@@ -182,7 +183,7 @@ class TestClient(unittest.TestCase):
 
     @patch('uid2_client.client.post')
     def test_cannot_encrypt_if_theres_no_default_keyset_header(self, mock_post):
-        def get_post_refresh_keys_response_with_no_default_keyset_header(base_url, path, headers, data):
+        def get_post_refresh_keys_response_with_no_default_keyset_header(base_url, path, headers, data, **kwargs):
             response_payload = key_set_to_json_for_sharing_with_header("", site_id, [master_key, site_key]).encode()
             return self._make_post_response(data, response_payload)
 
@@ -196,7 +197,7 @@ class TestClient(unittest.TestCase):
 
     @patch('uid2_client.client.post')
     def test_expiry_in_token_matches_expiry_in_response(self, mock_post):
-        def get_post_refresh_keys_response_with_token_expiry(base_url, path, headers, data):
+        def get_post_refresh_keys_response_with_token_expiry(base_url, path, headers, data, **kwargs):
             response_payload = key_set_to_json_for_sharing_with_header('"default_keyset_id": 99999, '
                                                                        '"token_expiry_seconds": 2,', 99999, [master_key,
                                                                                                              site_key]).encode()
@@ -228,7 +229,7 @@ class TestClient(unittest.TestCase):
 
     @patch('uid2_client.client.post')
     def test_encrypt_key_inactive(self, mock_post):
-        def get_post_refresh_keys_response_with_key_inactive(base_url, path, headers, data):
+        def get_post_refresh_keys_response_with_key_inactive(base_url, path, headers, data, **kwargs):
             key = EncryptionKey(245, site_id, now, now + dt.timedelta(days=1), now + dt.timedelta(days=2), site_secret,
                                 keyset_id=99999)
             response_payload = key_set_to_json_for_sharing([master_key, key]).encode()
@@ -244,7 +245,7 @@ class TestClient(unittest.TestCase):
 
     @patch('uid2_client.client.post')
     def test_encrypt_key_expired(self, mock_post):
-        def get_post_refresh_keys_response_with_key_expired(base_url, path, headers, data):
+        def get_post_refresh_keys_response_with_key_expired(base_url, path, headers, data, **kwargs):
             key = EncryptionKey(245, site_id, now, now, now - dt.timedelta(days=1), site_secret, keyset_id=99999)
             response_payload = key_set_to_json_for_sharing([master_key, key]).encode()
             return self._make_post_response(data, response_payload)
