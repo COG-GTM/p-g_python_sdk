@@ -13,8 +13,14 @@ authors = [
 ]
 description = "UID2 SDK for Python"
 readme = "README.md"
+requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
@@ -22,6 +28,29 @@ dependencies = [
     "pycryptodome"
 ]
 
+[project.optional-dependencies]
+async = ["aiohttp>=3.8"]
+
 [project.urls]
 "Homepage" = "https://github.com/IABTechLab/uid2-client-python"
 "Bug Tracker" = "https://github.com/IABTechLab/uid2-client-python/issues"
+
+[tool.ruff]
+target-version = "py38"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "uid2_client.*"
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

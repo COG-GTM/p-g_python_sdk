@@ -3,10 +3,11 @@
 Do not use this module directly, import from uid2_client instead, e.g.
 >>> from uid2_client import EncryptionKeysCollection
 """
-
+from __future__ import annotations
 
 import datetime as dt
 from bisect import bisect_right, bisect_left
+from typing import Dict, List, Optional, Sequence
 
 
 class EncryptionKey:
@@ -21,7 +22,7 @@ class EncryptionKey:
         secret (bytes): the actual encryption key
     """
 
-    def __init__(self, key_id, site_id, created, activates, expires, secret, keyset_id=None):
+    def __init__(self, key_id: int, site_id: int, created: dt.datetime, activates: dt.datetime, expires: dt.datetime, secret: bytes, keyset_id: Optional[int] = None) -> None:
         """Create a new encryption key."""
         self._id = key_id
         self._site_id = site_id
@@ -73,7 +74,7 @@ class EncryptionKey:
         return self._secret
 
 
-    def is_active(self, now):
+    def is_active(self, now: dt.datetime) -> bool:
         """Whether the key is active at the specified time."""
         return self._activates <= now and now < self._expires
 
@@ -81,7 +82,7 @@ class EncryptionKey:
 class _SiteKeyActivatesList:
     """Internal wrapper for list of site keys."""
 
-    def __init__(self, site_keys):
+    def __init__(self, site_keys: List[EncryptionKey]) -> None:
         self._site_keys = site_keys
 
 
@@ -100,7 +101,7 @@ class EncryptionKeysCollection:
     used for decoding UID2 advertising tokens.
     """
 
-    def __init__(self, keys, caller_site_id=None, master_keyset_id=None, default_keyset_id=None, token_expiry_seconds=None):
+    def __init__(self, keys: Sequence[EncryptionKey], caller_site_id: Optional[int] = None, master_keyset_id: Optional[int] = None, default_keyset_id: Optional[int] = None, token_expiry_seconds: Optional[int] = None) -> None:
         self._latest_expires = None
         self._keys = dict()
         self._keys_by_site = dict()
@@ -111,7 +112,7 @@ class EncryptionKeysCollection:
         self._default_keyset_id = default_keyset_id
         self._token_expiry_seconds = token_expiry_seconds
 
-    def set_keys(self, keys):
+    def set_keys(self, keys: Sequence[EncryptionKey]) -> None:
         for key in keys:
             self._keys[key.key_id] = key
             if key.site_id > 0:
@@ -147,7 +148,7 @@ class EncryptionKeysCollection:
         return self._token_expiry_seconds
 
 
-    def get(self, key_id, default=None):
+    def get(self, key_id: int, default: Optional[EncryptionKey] = None) -> Optional[EncryptionKey]:
         """Get encryption key with the specified id, else default."""
         return self._keys.get(key_id, default)
 
@@ -162,14 +163,14 @@ class EncryptionKeysCollection:
         return self._keys.values()
 
 
-    def get_default_keyset_key(self, now):
+    def get_default_keyset_key(self, now: dt.datetime) -> Optional[EncryptionKey]:
         return self.get_by_keyset_key(self._default_keyset_id, now)
 
-    def get_master_key(self, now):
+    def get_master_key(self, now: dt.datetime) -> Optional[EncryptionKey]:
         return self.get_by_keyset_key(self._master_keyset_id, now)
 
 
-    def get_by_keyset_key(self, keyset_id, now):
+    def get_by_keyset_key(self, keyset_id: Optional[int], now: dt.datetime) -> Optional[EncryptionKey]:
         """ Gets Active Key by keyset_id
 
         Args:
@@ -189,7 +190,7 @@ class EncryptionKeysCollection:
                 return key
         return None
 
-    def get_active_site_key(self, site_id, now):
+    def get_active_site_key(self, site_id: int, now: dt.datetime) -> Optional[EncryptionKey]:
         """Get active encryption key for the specified site, else None.
 
         Args:
@@ -211,7 +212,7 @@ class EncryptionKeysCollection:
         return None
 
 
-    def valid(self, now):
+    def valid(self, now: dt.datetime) -> bool:
         """Check whether the collection is valid.
 
         Collection is considered valid if at least one key has expiry date/time after now."""

@@ -1,27 +1,40 @@
-import base64
-import os
-from urllib import request
+from __future__ import annotations
 
-import pkg_resources
+import base64
+import datetime as dt
+from importlib.metadata import version as get_version, PackageNotFoundError
+import logging
+import os
+import time
+from typing import Any, Dict, Optional, Tuple
+from urllib import request
+from urllib.error import HTTPError, URLError
+from urllib.response import addinfourl
 
 from uid2_client.encryption import _encrypt_gcm, _decrypt_gcm
 
+logger = logging.getLogger(__name__)
 
-def _make_url(base_url, path):
+_DEFAULT_TIMEOUT_SECONDS = 10
+_DEFAULT_MAX_RETRIES = 3
+_DEFAULT_RETRY_BASE_DELAY = 1.0
+
+
+def _make_url(base_url: str, path: str) -> str:
     return base_url + path
 
 
-def auth_headers(auth_key):
+def auth_headers(auth_key: str) -> Dict[str, str]:
     try:
-        version = pkg_resources.get_distribution("uid2_client").version
-    except Exception:
-        version = "non-packaged-mode"
+        ver = get_version("uid2_client")
+    except PackageNotFoundError:
+        ver = "non-packaged-mode"
 
     return {'Authorization': 'Bearer ' + auth_key,
-            "X-UID2-Client-Version": "uid2-client-python-" + version}
+            "X-UID2-Client-Version": "uid2-client-python-" + ver}
 
 
-def make_v2_request(secret_key, now, data=None):
+def make_v2_request(secret_key: bytes, now: dt.datetime, data: Optional[bytes] = None) -> Tuple[bytes, bytes]:
     payload = int.to_bytes(int(now.timestamp() * 1000), 8, 'big')
     nonce = os.urandom(8)
     payload += nonce
@@ -34,13 +47,44 @@ def make_v2_request(secret_key, now, data=None):
     return base64.b64encode(envelope), nonce
 
 
-def parse_v2_response(secret_key, encrypted, nonce):
+def parse_v2_response(secret_key: bytes, encrypted: bytes, nonce: bytes) -> bytes:
     payload = _decrypt_gcm(base64.b64decode(encrypted), secret_key)
     if nonce != payload[8:16]:
         raise ValueError("nonce mismatch")
     return payload[16:]
 
 
-def post(base_url, path, headers, data):
-    req = request.Request(_make_url(base_url, path), headers=headers, method='POST', data=data)
-    return request.urlopen(req)
+def _is_retryable(exc: Exception) -> bool:
+    if isinstance(exc, HTTPError):
+        return exc.code >= 500
+    if isinstance(exc, (URLError, TimeoutError, OSError)):
+        return True
+    return False
+
+
+def post(
+    base_url: str,
+    path: str,
+    headers: Dict[str, str],
+    data: bytes,
+    timeout: float = _DEFAULT_TIMEOUT_SECONDS,
+    max_retries: int = _DEFAULT_MAX_RETRIES,
+    retry_base_delay: float = _DEFAULT_RETRY_BASE_DELAY,
+) -> addinfourl:
+    url = _make_url(base_url, path)
+    req = request.Request(url, headers=headers, method='POST', data=data)
+    last_exc: Optional[Exception] = None
+    for attempt in range(max_retries):
+        try:
+            return request.urlopen(req, timeout=timeout)
+        except Exception as exc:
+            last_exc = exc
+            if not _is_retryable(exc) or attempt == max_retries - 1:
+                raise
+            delay = retry_base_delay * (2 ** attempt)
+            logger.warning(
+                "Request to %s failed (attempt %d/%d): %s. Retrying in %.1fs",
+                url, attempt + 1, max_retries, exc, delay,
+            )
+            time.sleep(delay)
+    raise last_exc  # type: ignore[misc]
