@@ -7,16 +7,17 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
-from datetime import timezone
 import os
-from typing import Optional, TYPE_CHECKING
-from Crypto.Cipher import AES
+from datetime import timezone
 from enum import Enum
+from typing import TYPE_CHECKING, Optional
+
+from Crypto.Cipher import AES
 
 from uid2_client.advertising_token_version import AdvertisingTokenVersion
-from uid2_client.uid2_base64_url_coder import Uid2Base64UrlCoder
-from uid2_client.identity_type import IdentityType
 from uid2_client.identity_scope import IdentityScope
+from uid2_client.identity_type import IdentityType
+from uid2_client.uid2_base64_url_coder import Uid2Base64UrlCoder
 
 if TYPE_CHECKING:
     from uid2_client.keys import EncryptionKey, EncryptionKeysCollection
@@ -158,7 +159,16 @@ def _decrypt_token_v3(token_bytes: bytes, keys: EncryptionKeysCollection, now: d
     return DecryptedToken(id_str, established, site_id, site_key.site_id)
 
 
-def _encrypt_token(uid2: str, identity_scope: IdentityScope, master_key: EncryptionKey, site_key: EncryptionKey, site_id: int, now: dt.datetime, token_expiry: dt.datetime, ad_token_version: AdvertisingTokenVersion) -> str:
+def _encrypt_token(
+    uid2: str,
+    identity_scope: IdentityScope,
+    master_key: EncryptionKey,
+    site_key: EncryptionKey,
+    site_id: int,
+    now: dt.datetime,
+    token_expiry: dt.datetime,
+    ad_token_version: AdvertisingTokenVersion,
+) -> str:
     site_payload = bytearray(128)
     # Publisher Data
     site_payload[0:4] = int.to_bytes(site_id, byteorder='big', length=4)  # Site id
@@ -201,7 +211,13 @@ def _encrypt_token(uid2: str, identity_scope: IdentityScope, master_key: Encrypt
 
 
 # DEPRECATED, DO NOT CALL DIRECTLY. PLEASE USE Uid2Client's client.encrypt()
-def encrypt(uid2: str, identity_scope: IdentityScope, keys: EncryptionKeysCollection, keyset_id: Optional[int] = None, **kwargs) -> str:
+def encrypt(
+    uid2: str,
+    identity_scope: IdentityScope,
+    keys: EncryptionKeysCollection,
+    keyset_id: Optional[int] = None,
+    **kwargs,
+) -> str:
     """ Encrypt an UID2 into a sharing token
 
     Args:
@@ -234,6 +250,9 @@ def encrypt(uid2: str, identity_scope: IdentityScope, keys: EncryptionKeysCollec
 
     if key is None:
         raise EncryptionError("No Keyset Key Found")
+
+    if master_key is None:
+        raise EncryptionError("No Master Keyset Key Found")
 
     return _encrypt_token(uid2, identity_scope, master_key, key, site_id, now, token_expiry, ad_token_version)
 
@@ -290,6 +309,8 @@ def encrypt_data(data: bytes, identity_scope: IdentityScope, **kwargs) -> str:
         advertising_token = kwargs.get("advertising_token")
         if site_id is not None and advertising_token is not None:
             raise ValueError("only one of site_id and advertising_token can be specified")
+        if keys is None:
+            raise ValueError("keys must be specified when key is not provided")
         if advertising_token is not None:
             decrypted_token = decrypt(advertising_token, keys, now)
             site_id = decrypted_token.site_id
@@ -308,6 +329,8 @@ def encrypt_data(data: bytes, identity_scope: IdentityScope, **kwargs) -> str:
     iv = kwargs.get("iv")
     if iv is None:
         iv = os.urandom(12)
+    if site_id is None:
+        raise EncryptionError("site_id must be provided")
 
     payload = int.to_bytes(int(now.timestamp() * 1000), 8, 'big')
     payload += int.to_bytes(site_id, 4, 'big')
@@ -417,7 +440,7 @@ def _encrypt_gcm(data: bytes, iv: Optional[bytes], secret: bytes) -> bytes:
         raise ValueError("iv must be 12 bytes")
     cipher = AES.new(secret, AES.MODE_GCM, nonce=iv)
     ciphertext, tag = cipher.encrypt_and_digest(data)
-    return cipher.nonce + ciphertext + tag
+    return bytes(cipher.nonce) + ciphertext + tag
 
 
 def _decrypt_gcm(encrypted: bytes, secret: bytes) -> bytes:

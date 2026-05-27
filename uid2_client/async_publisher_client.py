@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
-from datetime import timezone
 import logging
-from typing import Optional
+from datetime import timezone
 
 try:
     import aiohttp
@@ -23,8 +22,11 @@ from .encryption import _decrypt_gcm
 from .identity_tokens import IdentityTokens
 from .input_util import base64_to_byte_array
 from .request_response_util import (
-    auth_headers, make_v2_request, parse_v2_response,
-    _make_url, _DEFAULT_TIMEOUT_SECONDS,
+    _DEFAULT_TIMEOUT_SECONDS,
+    _make_url,
+    auth_headers,
+    make_v2_request,
+    parse_v2_response,
 )
 from .token_generate_input import TokenGenerateInput
 from .token_generate_response import TokenGenerateResponse
@@ -75,13 +77,16 @@ class AsyncUid2PublisherClient:
 
     async def refresh_token(self, current_identity: IdentityTokens) -> TokenRefreshResponse:
         """Refresh an advertising token."""
+        refresh_token = current_identity.get_refresh_token()
+        if refresh_token is None:
+            raise ValueError("No refresh token available in identity")
         url = _make_url(self._base_url, '/v2/token/refresh')
         headers = auth_headers(self._auth_key)
 
         async with aiohttp.ClientSession(timeout=self._timeout) as session:
             async with session.post(
                 url, headers=headers,
-                data=current_identity.get_refresh_token().encode(),
+                data=refresh_token.encode(),
             ) as resp:
                 resp.raise_for_status()
                 resp_bytes = await resp.read()

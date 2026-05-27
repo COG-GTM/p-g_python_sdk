@@ -6,8 +6,8 @@ Do not use this module directly, import from uid2_client instead, e.g.
 from __future__ import annotations
 
 import datetime as dt
-from bisect import bisect_right, bisect_left
-from typing import Dict, List, Optional, Sequence
+from bisect import bisect_right
+from typing import List, Optional, Sequence
 
 
 class EncryptionKey:
@@ -22,7 +22,16 @@ class EncryptionKey:
         secret (bytes): the actual encryption key
     """
 
-    def __init__(self, key_id: int, site_id: int, created: dt.datetime, activates: dt.datetime, expires: dt.datetime, secret: bytes, keyset_id: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        key_id: int,
+        site_id: int,
+        created: dt.datetime,
+        activates: dt.datetime,
+        expires: dt.datetime,
+        secret: bytes,
+        keyset_id: Optional[int] = None,
+    ) -> None:
         """Create a new encryption key."""
         self._id = key_id
         self._site_id = site_id
@@ -101,11 +110,18 @@ class EncryptionKeysCollection:
     used for decoding UID2 advertising tokens.
     """
 
-    def __init__(self, keys: Sequence[EncryptionKey], caller_site_id: Optional[int] = None, master_keyset_id: Optional[int] = None, default_keyset_id: Optional[int] = None, token_expiry_seconds: Optional[int] = None) -> None:
-        self._latest_expires = None
-        self._keys = dict()
-        self._keys_by_site = dict()
-        self._keys_by_keyset = dict()
+    def __init__(
+        self,
+        keys: Sequence[EncryptionKey],
+        caller_site_id: Optional[int] = None,
+        master_keyset_id: Optional[int] = None,
+        default_keyset_id: Optional[int] = None,
+        token_expiry_seconds: Optional[int] = None,
+    ) -> None:
+        self._latest_expires: Optional[dt.datetime] = None
+        self._keys: dict[int, EncryptionKey] = {}
+        self._keys_by_site: dict[int, list[EncryptionKey]] = {}
+        self._keys_by_keyset: dict[int, list[EncryptionKey]] = {}
         self.set_keys(keys)
         self._caller_site_id = caller_site_id
         self._master_keyset_id = master_keyset_id
@@ -179,6 +195,8 @@ class EncryptionKeysCollection:
         Returns: EncryptionKey: active keyset key or None
 
         """
+        if keyset_id is None:
+            return None
         keyset_keys = self._keys_by_keyset.get(keyset_id)
         if keyset_keys is None or len(keyset_keys) == 0:
             return None

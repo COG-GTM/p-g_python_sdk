@@ -2,16 +2,17 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
-from importlib.metadata import version as get_version, PackageNotFoundError
 import logging
 import os
 import time
-from typing import Any, Dict, Optional, Tuple
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as get_version
+from typing import Dict, Optional, Tuple
 from urllib import request
 from urllib.error import HTTPError, URLError
 from urllib.response import addinfourl
 
-from uid2_client.encryption import _encrypt_gcm, _decrypt_gcm
+from uid2_client.encryption import _decrypt_gcm, _encrypt_gcm
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,7 @@ def post(
     last_exc: Optional[Exception] = None
     for attempt in range(max_retries):
         try:
-            return request.urlopen(req, timeout=timeout)
+            return request.urlopen(req, timeout=timeout)  # type: ignore[return-value]
         except Exception as exc:
             last_exc = exc
             if not _is_retryable(exc) or attempt == max_retries - 1:

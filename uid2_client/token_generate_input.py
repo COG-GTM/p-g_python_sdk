@@ -1,6 +1,7 @@
 import json
+
 from .identity_type import IdentityType
-from .input_util import normalize_email_string, get_base64_encoded_hash, is_phone_number_normalized
+from .input_util import get_base64_encoded_hash, is_phone_number_normalized, normalize_email_string
 
 
 class TokenGenerateInput:
@@ -36,7 +37,8 @@ class TokenGenerateInput:
         self.need_hash = False
         return self
 
-    # Always use .do_not_generate_tokens_for_opted_out(), which applies policy=1. Support for policy=0 will be removed soon.
+    # Always use .do_not_generate_tokens_for_opted_out(), which applies policy=1.
+    # Support for policy=0 will be removed soon.
     def do_not_generate_tokens_for_opted_out(self):
         self.generate_for_opted_out = False
         return self

@@ -6,10 +6,10 @@ Do not use this module directly, import from uid2_client instead, e.g.
 from __future__ import annotations
 
 import datetime as dt
-from datetime import timezone
 import sys
 import threading
-from typing import Optional, Tuple, TYPE_CHECKING
+from datetime import timezone
+from typing import TYPE_CHECKING, Optional, Tuple
 
 if TYPE_CHECKING:
     from uid2_client.client import Uid2Client
@@ -28,7 +28,12 @@ class EncryptionKeysAutoRefreshResult:
                                       None if refresh has not completed successfully even once)
         ready (bool): keys have been refreshed at least once (they may no longer be valid though!)
     """
-    def __init__(self, keys: Optional[EncryptionKeysCollection], error: Optional[Tuple], last_success: Optional[dt.datetime]) -> None:
+    def __init__(
+        self,
+        keys: Optional[EncryptionKeysCollection],
+        error: Optional[Tuple],
+        last_success: Optional[dt.datetime],
+    ) -> None:
         self.keys = keys
         self.last_error = error
         self.last_success_time = last_success
@@ -41,7 +46,8 @@ class EncryptionKeysAutoRefreshResult:
 
 
     def __repr__(self) -> str:
-        return '<{}, {}>'.format(self.keys, self.last_error[1])
+        err = self.last_error[1] if self.last_error is not None else None
+        return '<{}, {}>'.format(self.keys, err)
 
 
 class EncryptionKeysAutoRefresher(threading.Thread):
@@ -145,6 +151,11 @@ class EncryptionKeysAutoRefresher(threading.Thread):
         return self
 
 
-    def __exit__(self, exc_type: Optional[type], exc_value: Optional[BaseException], traceback: Optional[object]) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[type],
+        exc_value: Optional[BaseException],
+        traceback: Optional[object],
+    ) -> None:
         self.cancel()
         self.join()

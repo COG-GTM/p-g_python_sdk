@@ -1,18 +1,25 @@
 from __future__ import annotations
 
 import datetime
-from datetime import timezone
 import json
 import logging
+from datetime import timezone
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
 class IdentityTokens:
-    def __init__(self, advertising_token: Optional[str], refresh_token: Optional[str], refresh_response_key: Optional[str],
-                 identity_expires: Optional[float], refresh_expires: Optional[float],
-                 refresh_from: Optional[float], json_string: str) -> None:
+    def __init__(
+        self,
+        advertising_token: Optional[str],
+        refresh_token: Optional[str],
+        refresh_response_key: Optional[str],
+        identity_expires: Optional[float],
+        refresh_expires: Optional[float],
+        refresh_from: Optional[float],
+        json_string: str,
+    ) -> None:
         self._advertising_token = advertising_token
         self._refresh_token = refresh_token
         self._refresh_response_key = refresh_response_key
@@ -68,9 +75,13 @@ class IdentityTokens:
         return self._refresh_token is not None
 
     def is_due_for_refresh_impl(self, timestamp: datetime.datetime) -> bool:
+        if self._refresh_from is None:
+            return self.has_identity_expired(timestamp)
         return timestamp.timestamp() > self._refresh_from or self.has_identity_expired(timestamp)
 
     def has_identity_expired(self, timestamp: datetime.datetime) -> bool:
+        if self._identity_expires is None:
+            return True
         return timestamp.timestamp() > self._identity_expires
 
     def get_refresh_response_key(self) -> Optional[str]:

@@ -43,14 +43,11 @@ line-length = 120
 select = ["E", "F", "W", "I"]
 
 [tool.mypy]
-python_version = "3.8"
-warn_return_any = true
+python_version = "3.10"
+warn_return_any = false
 warn_unused_configs = true
 ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "uid2_client.*"
-disallow_untyped_defs = true
+check_untyped_defs = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

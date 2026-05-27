@@ -8,18 +8,24 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
-from datetime import timezone
 import json
 import threading
+from datetime import timezone
 from typing import Any, Dict, Optional
 
 from uid2_client import encryption
-from .encryption import DecryptedToken
-from .keys import EncryptionKey, EncryptionKeysCollection
+
+from .encryption import DecryptedToken, EncryptionError
 from .identity_scope import IdentityScope
+from .keys import EncryptionKey, EncryptionKeysCollection
 from .request_response_util import (
-    post, auth_headers, make_v2_request, parse_v2_response,
-    _DEFAULT_TIMEOUT_SECONDS, _DEFAULT_MAX_RETRIES, _DEFAULT_RETRY_BASE_DELAY,
+    _DEFAULT_MAX_RETRIES,
+    _DEFAULT_RETRY_BASE_DELAY,
+    _DEFAULT_TIMEOUT_SECONDS,
+    auth_headers,
+    make_v2_request,
+    parse_v2_response,
+    post,
 )
 
 
@@ -73,8 +79,8 @@ class Uid2Client:
         self._base_url = base_url
         self._auth_key = auth_key
         self._secret_key = base64.b64decode(secret_key)
-        self._identity_scope = None
-        self._keys = None
+        self._identity_scope: Optional[IdentityScope] = None
+        self._keys: Optional[EncryptionKeysCollection] = None
         self._keys_lock = threading.Lock()
         self._timeout = timeout
         self._max_retries = max_retries
@@ -129,6 +135,10 @@ class Uid2Client:
             """
         with self._keys_lock:
             keys = self._keys
+        if self._identity_scope is None:
+            raise EncryptionError("Client not initialized with an identity scope")
+        if keys is None:
+            raise EncryptionError("No keys available. Call refresh_keys() first.")
         return encryption.encrypt(uid2, self._identity_scope, keys, keyset_id)
 
     def decrypt(self, token: str) -> DecryptedToken:
@@ -148,6 +158,8 @@ class Uid2Client:
         """
         with self._keys_lock:
             keys = self._keys
+        if keys is None:
+            raise EncryptionError("No keys available. Call refresh_keys() first.")
         return encryption.decrypt(token, keys)
 
     def _parse_keys_json(self, resp_body: Dict[str, Any]) -> EncryptionKeysCollection:

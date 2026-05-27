@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
-from datetime import timezone
 import json
 import logging
 import threading
+from datetime import timezone
 from typing import Any, Dict, Optional
 
 try:
@@ -27,8 +27,11 @@ from .encryption import DecryptedToken
 from .identity_scope import IdentityScope
 from .keys import EncryptionKey, EncryptionKeysCollection
 from .request_response_util import (
-    auth_headers, make_v2_request, parse_v2_response,
-    _make_url, _DEFAULT_TIMEOUT_SECONDS,
+    _DEFAULT_TIMEOUT_SECONDS,
+    _make_url,
+    auth_headers,
+    make_v2_request,
+    parse_v2_response,
 )
 
 logger = logging.getLogger(__name__)
@@ -99,12 +102,18 @@ class AsyncUid2Client:
         """Encrypt a UID2 into a sharing token."""
         with self._keys_lock:
             keys = self._keys
+        if self._identity_scope is None:
+            raise ValueError("Client not initialized with an identity scope")
+        if keys is None:
+            raise ValueError("No keys available. Call refresh_keys() first.")
         return encryption.encrypt(uid2, self._identity_scope, keys, keyset_id)
 
     def decrypt(self, token: str) -> DecryptedToken:
         """Decrypt an advertising token to extract UID2 details."""
         with self._keys_lock:
             keys = self._keys
+        if keys is None:
+            raise ValueError("No keys available. Call refresh_keys() first.")
         return encryption.decrypt(token, keys)
 
     def _parse_keys_json(self, resp_body: Dict[str, Any]) -> EncryptionKeysCollection:

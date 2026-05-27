@@ -10,17 +10,21 @@ import base64
 import datetime as dt
 from datetime import timezone
 
-
 from .encryption import _decrypt_gcm
 from .identity_tokens import IdentityTokens
+from .input_util import base64_to_byte_array
 from .request_response_util import (
-    post, auth_headers, make_v2_request, parse_v2_response,
-    _DEFAULT_TIMEOUT_SECONDS, _DEFAULT_MAX_RETRIES, _DEFAULT_RETRY_BASE_DELAY,
+    _DEFAULT_MAX_RETRIES,
+    _DEFAULT_RETRY_BASE_DELAY,
+    _DEFAULT_TIMEOUT_SECONDS,
+    auth_headers,
+    make_v2_request,
+    parse_v2_response,
+    post,
 )
 from .token_generate_input import TokenGenerateInput
 from .token_generate_response import TokenGenerateResponse
 from .token_refresh_response import TokenRefreshResponse
-from .input_util import base64_to_byte_array
 
 
 class Uid2PublisherClient:
@@ -81,9 +85,12 @@ class Uid2PublisherClient:
         return TokenGenerateResponse(resp_body)
 
     def refresh_token(self, current_identity: IdentityTokens) -> TokenRefreshResponse:
+        refresh_token = current_identity.get_refresh_token()
+        if refresh_token is None:
+            raise ValueError("No refresh token available in identity")
         resp = post(
             self._base_url, '/v2/token/refresh', headers=auth_headers(self._auth_key),
-            data=current_identity.get_refresh_token().encode(),
+            data=refresh_token.encode(),
             timeout=self._timeout, max_retries=self._max_retries, retry_base_delay=self._retry_base_delay,
         )
         resp_bytes = base64_to_byte_array(resp.read())
