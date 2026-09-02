@@ -25,6 +25,10 @@ class Uid2HttpError(urllib.error.HTTPError):
         self.body = body
         self.url = url
 
+    @property
+    def status(self) -> int:
+        return self.code
+
     def __str__(self) -> str:
         return f"UID2 request to {self.url} failed with HTTP {self.status}: {self.reason}"
 
