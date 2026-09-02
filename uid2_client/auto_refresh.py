@@ -36,7 +36,7 @@ class EncryptionKeysAutoRefreshResult:
 
 
     def __repr__(self):
-        return '<{}, {}>'.format(self.keys, self.last_error[1])
+        return '<{}, {}>'.format(self.keys, self.last_error[1] if self.last_error else None)
 
 
 class EncryptionKeysAutoRefresher(threading.Thread):
@@ -122,7 +122,7 @@ class EncryptionKeysAutoRefresher(threading.Thread):
             keys = self._client.refresh_keys()
             self._result = self._make_success_result(keys)
             return True
-        except:
+        except Exception:
             self._result = self._make_error_result(sys.exc_info())
             return False
 

@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from test_utils import *
+from tests.test_utils import *
 from uid2_client import *
 from uid2_client.encryption import _encrypt_gcm, _decrypt_gcm
 from uid2_client.euid_client_factory import EuidClientFactory

@@ -12,8 +12,10 @@ from uid2_client.uid2_base64_url_coder import Uid2Base64UrlCoder
 
 
 class Params:
-    def __init__(self, expiry=dt.datetime.now(tz=timezone.utc) + dt.timedelta(hours=1),
+    def __init__(self, expiry=None,
                  identity_scope=IdentityScope.UID2.value):
+        if expiry is None:
+            expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(hours=1)
         self.identity_scope = identity_scope
         self.token_expiry = expiry
         if not isinstance(expiry, dt.datetime):

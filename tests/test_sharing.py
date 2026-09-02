@@ -1,7 +1,7 @@
 import unittest
 
 from uid2_client import *
-from test_utils import *
+from tests.test_utils import *
 
 import datetime as dt
 

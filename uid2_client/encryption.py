@@ -33,7 +33,7 @@ base64_url_special_chars = {"-", "_"}
 
 
 # DEPRECATED, DO NOT CALL DIRECTLY. PLEASE USE Uid2Client's client.decrypt()
-def decrypt(token, keys, now=dt.datetime.now(tz=timezone.utc)):
+def decrypt(token, keys, now=None):
     """Decrypt advertising token to extract UID2 details.
 
     Args:
@@ -48,6 +48,9 @@ def decrypt(token, keys, now=dt.datetime.now(tz=timezone.utc)):
         EncryptionError: if token version is not supported, the token has expired,
                          or no required decryption keys present in the keys collection
     """
+
+    if now is None:
+        now = dt.datetime.now(tz=timezone.utc)
 
     try:
         return _decrypt_token(token, keys, now)
@@ -223,8 +226,7 @@ def encrypt(uid2, identity_scope, keys, keyset_id=None, **kwargs):
 
     site_id = keys.get_caller_site_id()
     if site_id is None:
-        print("No Site ID in keys")
-        return
+        raise EncryptionError("No Site ID in keys")
 
     if key is None:
         raise EncryptionError("No Keyset Key Found")

@@ -22,12 +22,10 @@ class PublisherEuidIntegrationTests(unittest.TestCase):
         cls.EUID_API_KEY = os.getenv("EUID_API_KEY")
         cls.EUID_SECRET_KEY = os.getenv("EUID_SECRET_KEY")
 
-        print(cls.EUID_BASE_URL, cls.EUID_API_KEY, cls.EUID_SECRET_KEY)
-
         if cls.EUID_BASE_URL and cls.EUID_API_KEY and cls.EUID_SECRET_KEY:
             cls.publisher_client = Uid2PublisherClient(cls.EUID_BASE_URL, cls.EUID_API_KEY, cls.EUID_SECRET_KEY)
         else:
-            raise Exception("set the required EUID_BASE_URL/EUID_API_KEY/EUID_SECRET_KEY environment variables first")
+            raise unittest.SkipTest("set EUID_BASE_URL/EUID_API_KEY/EUID_SECRET_KEY to run integration tests")
 
     # this test requires these env vars to be configured: EUID_BASE_URL, EUID_API_KEY, EUID_SECRET_KEY
     def test_integration_tc_string(self):
@@ -75,12 +73,10 @@ class PublisherUid2IntegrationTests(unittest.TestCase):
         cls.UID2_API_KEY = os.getenv("UID2_API_KEY")
         cls.UID2_SECRET_KEY = os.getenv("UID2_SECRET_KEY")
 
-        print(cls.UID2_BASE_URL, cls.UID2_API_KEY, cls.UID2_SECRET_KEY)
-
         if cls.UID2_BASE_URL and cls.UID2_API_KEY and cls.UID2_SECRET_KEY:
             cls.publisher_client = Uid2PublisherClient(cls.UID2_BASE_URL, cls.UID2_API_KEY, cls.UID2_SECRET_KEY)
         else:
-            raise Exception("set the required UID2_BASE_URL/UID2_API_KEY/UID2_SECRET_KEY environment variables first")
+            raise unittest.SkipTest("set UID2_BASE_URL/UID2_API_KEY/UID2_SECRET_KEY to run integration tests")
 
     # this test requires these env vars to be configured: UID2_BASE_URL, UID2_API_KEY, UID2_SECRET_KEY
     def test_integration_generate_and_refresh(self):
