@@ -1,7 +1,6 @@
 import sys
 
-from uid2_client.euid_client_factory import EuidClientFactory
-from uid2_client.uid2_client_factory import Uid2ClientFactory
+from uid2_client import Uid2ClientFactory
 
 
 # this sample client decrypts an advertising token into a raw UID2

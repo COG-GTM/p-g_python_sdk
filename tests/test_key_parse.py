@@ -1,3 +1,5 @@
+"""Key parsing tests."""
+
 import unittest
 from uid2_client import Uid2Client
 import datetime as dt
@@ -66,9 +68,9 @@ class TestKeyParse(unittest.TestCase):
 
     def test_parse_key_error(self):
         client = Uid2Client("ep", "ak", "ioG3wKxAokmp+rERx6A4kM/13qhyolUXIu14WN16Spo=")
-        self.assertRaises(BaseException, client.refresh_json, "{\"status\": \"error\"}")
-        self.assertRaises(BaseException, client.refresh_json, "{\"body\": \"error\"}")
-        self.assertRaises(BaseException, client.refresh_json, "{\"body\": [1, 2, 3]}")
-        self.assertRaises(BaseException, client.refresh_json, "{\"body\": [{}]}")
-        self.assertRaises(BaseException, client.refresh_json, "{\"body\": [{\"id\": \"test\"}]}")
-        self.assertRaises(BaseException, client.refresh_json, "{\"body\": [{\"id\": 5}]}")
+        self.assertRaises(BaseException, client.refresh_json, "{\"status\": \"error\"}")  # noqa: B017
+        self.assertRaises(BaseException, client.refresh_json, "{\"body\": \"error\"}")  # noqa: B017
+        self.assertRaises(BaseException, client.refresh_json, "{\"body\": [1, 2, 3]}")  # noqa: B017
+        self.assertRaises(BaseException, client.refresh_json, "{\"body\": [{}]}")  # noqa: B017
+        self.assertRaises(BaseException, client.refresh_json, "{\"body\": [{\"id\": \"test\"}]}")  # noqa: B017
+        self.assertRaises(BaseException, client.refresh_json, "{\"body\": [{\"id\": 5}]}")  # noqa: B017

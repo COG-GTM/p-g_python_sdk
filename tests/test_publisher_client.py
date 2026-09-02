@@ -3,7 +3,6 @@ import unittest
 
 from uid2_client import Uid2PublisherClient
 from uid2_client import TokenGenerateInput
-from uid2_client import TokenGenerateResponse
 from uid2_client.identity_tokens import IdentityTokens
 from urllib.request import HTTPError
 
@@ -22,12 +21,10 @@ class PublisherEuidIntegrationTests(unittest.TestCase):
         cls.EUID_API_KEY = os.getenv("EUID_API_KEY")
         cls.EUID_SECRET_KEY = os.getenv("EUID_SECRET_KEY")
 
-        print(cls.EUID_BASE_URL, cls.EUID_API_KEY, cls.EUID_SECRET_KEY)
-
         if cls.EUID_BASE_URL and cls.EUID_API_KEY and cls.EUID_SECRET_KEY:
             cls.publisher_client = Uid2PublisherClient(cls.EUID_BASE_URL, cls.EUID_API_KEY, cls.EUID_SECRET_KEY)
         else:
-            raise Exception("set the required EUID_BASE_URL/EUID_API_KEY/EUID_SECRET_KEY environment variables first")
+            raise unittest.SkipTest("set EUID_BASE_URL/EUID_API_KEY/EUID_SECRET_KEY to run integration tests")
 
     # this test requires these env vars to be configured: EUID_BASE_URL, EUID_API_KEY, EUID_SECRET_KEY
     def test_integration_tc_string(self):
@@ -75,12 +72,10 @@ class PublisherUid2IntegrationTests(unittest.TestCase):
         cls.UID2_API_KEY = os.getenv("UID2_API_KEY")
         cls.UID2_SECRET_KEY = os.getenv("UID2_SECRET_KEY")
 
-        print(cls.UID2_BASE_URL, cls.UID2_API_KEY, cls.UID2_SECRET_KEY)
-
         if cls.UID2_BASE_URL and cls.UID2_API_KEY and cls.UID2_SECRET_KEY:
             cls.publisher_client = Uid2PublisherClient(cls.UID2_BASE_URL, cls.UID2_API_KEY, cls.UID2_SECRET_KEY)
         else:
-            raise Exception("set the required UID2_BASE_URL/UID2_API_KEY/UID2_SECRET_KEY environment variables first")
+            raise unittest.SkipTest("set UID2_BASE_URL/UID2_API_KEY/UID2_SECRET_KEY to run integration tests")
 
     # this test requires these env vars to be configured: UID2_BASE_URL, UID2_API_KEY, UID2_SECRET_KEY
     def test_integration_generate_and_refresh(self):
@@ -194,7 +189,7 @@ class PublisherUid2IntegrationTests(unittest.TestCase):
 
         bad_api_client = Uid2PublisherClient(self.UID2_BASE_URL, "not-real-key", self.UID2_SECRET_KEY)
         with self.assertRaises(HTTPError):
-            bad_secret_client.generate_token(TokenGenerateInput.from_email("test@example.com"))
+            bad_api_client.generate_token(TokenGenerateInput.from_email("test@example.com"))
 
 
 if __name__ == '__main__':

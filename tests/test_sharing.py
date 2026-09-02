@@ -1,7 +1,12 @@
+"""Sharing tests."""
+
+# Existing tests intentionally use shared wildcard fixtures.
+# ruff: noqa: F403, F405, F841
+
 import unittest
 
 from uid2_client import *
-from test_utils import *
+from tests.test_utils import *
 
 import datetime as dt
 

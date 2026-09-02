@@ -4,10 +4,13 @@ Do not use this module directly, import from uid2_client instead, e.g.
 >>> from uid2_client import decrypt
 """
 
+from __future__ import annotations
+
 import base64
 import datetime as dt
 from datetime import timezone
 import os
+from typing import Optional, cast
 from Crypto.Cipher import AES
 from enum import Enum
 
@@ -15,6 +18,7 @@ from uid2_client.advertising_token_version import AdvertisingTokenVersion
 from uid2_client.uid2_base64_url_coder import Uid2Base64UrlCoder
 from uid2_client.identity_type import IdentityType
 from uid2_client.identity_scope import IdentityScope
+from uid2_client.keys import EncryptionKey, EncryptionKeysCollection
 
 encryption_block_size = AES.block_size
 """int: block size for encryption routines
@@ -33,7 +37,7 @@ base64_url_special_chars = {"-", "_"}
 
 
 # DEPRECATED, DO NOT CALL DIRECTLY. PLEASE USE Uid2Client's client.decrypt()
-def decrypt(token, keys, now=dt.datetime.now(tz=timezone.utc)):
+def decrypt(token: str, keys: EncryptionKeysCollection, now: dt.datetime | None = None) -> DecryptedToken:
     """Decrypt advertising token to extract UID2 details.
 
     Args:
@@ -48,6 +52,9 @@ def decrypt(token, keys, now=dt.datetime.now(tz=timezone.utc)):
         EncryptionError: if token version is not supported, the token has expired,
                          or no required decryption keys present in the keys collection
     """
+
+    if now is None:
+        now = dt.datetime.now(tz=timezone.utc)
 
     try:
         return _decrypt_token(token, keys, now)
@@ -194,7 +201,8 @@ def _encrypt_token(uid2, identity_scope, master_key, site_key, site_id, now, tok
 
 
 # DEPRECATED, DO NOT CALL DIRECTLY. PLEASE USE Uid2Client's client.encrypt()
-def encrypt(uid2, identity_scope, keys, keyset_id=None, **kwargs):
+def encrypt(uid2: str, identity_scope: IdentityScope, keys: EncryptionKeysCollection,
+            keyset_id: int | None = None, **kwargs: object) -> str:
     """ Encrypt an UID2 into a sharing token
 
     Args:
@@ -209,8 +217,10 @@ def encrypt(uid2, identity_scope, keys, keyset_id=None, **kwargs):
     Returns (str): Sharing Token
 
     """
-    now = kwargs.get("now")
-    if now is None:
+    now_value = kwargs.get("now")
+    if isinstance(now_value, dt.datetime):
+        now = now_value
+    else:
         now = dt.datetime.now(tz=timezone.utc)
 
     ad_token_version = AdvertisingTokenVersion.ADVERTISING_TOKEN_V4
@@ -218,13 +228,13 @@ def encrypt(uid2, identity_scope, keys, keyset_id=None, **kwargs):
     key = keys.get_default_keyset_key(now) if keyset_id is None else keys.get_by_keyset_key(keyset_id, now)
     master_key = keys.get_by_keyset_key(keys.get_master_keyset_id(), now)
 
-    token_expiry = now + dt.timedelta(days=30) if keys.get_token_expiry_seconds() is None \
-        else now + dt.timedelta(seconds=int(keys.get_token_expiry_seconds()))
+    token_expiry_seconds = keys.get_token_expiry_seconds()
+    token_expiry = now + dt.timedelta(days=30) if token_expiry_seconds is None \
+        else now + dt.timedelta(seconds=int(token_expiry_seconds))
 
     site_id = keys.get_caller_site_id()
     if site_id is None:
-        print("No Site ID in keys")
-        return
+        raise EncryptionError("No Site ID in keys")
 
     if key is None:
         raise EncryptionError("No Keyset Key Found")
@@ -232,7 +242,7 @@ def encrypt(uid2, identity_scope, keys, keyset_id=None, **kwargs):
     return _encrypt_token(uid2, identity_scope, master_key, key, site_id, now, token_expiry, ad_token_version)
 
 
-def encrypt_data(data, identity_scope, **kwargs):
+def encrypt_data(data: bytes, identity_scope: IdentityScope, **kwargs: object) -> str:
     """Encrypt arbitrary binary data.
 
     The data can be decrypted with decrypt_data() function.
@@ -271,17 +281,21 @@ def encrypt_data(data, identity_scope, **kwargs):
         - keys and site_id: find the key for the specified site_id
         - keys and advertising_token: extract site_id from the token and find a key for it
     """
-    now = kwargs.get("now")
-    if now is None:
+    now_value = kwargs.get("now")
+    if isinstance(now_value, dt.datetime):
+        now = now_value
+    else:
         now = dt.datetime.now(tz=timezone.utc)
-    keys = kwargs.get("keys")
-    key = kwargs.get("key")
+    keys = cast(Optional[EncryptionKeysCollection], kwargs.get("keys"))
+    key = cast(Optional[EncryptionKey], kwargs.get("key"))
     if keys is not None and key is not None:
         raise ValueError("only one of keys and key can be specified")
     if key is None:
-        site_id = kwargs.get("site_id")
+        if keys is None:
+            raise ValueError("one of key or keys must be specified")
+        site_id = cast(Optional[int], kwargs.get("site_id"))
         site_key_site_id = site_id
-        advertising_token = kwargs.get("advertising_token")
+        advertising_token = cast(Optional[str], kwargs.get("advertising_token"))
         if site_id is not None and advertising_token is not None:
             raise ValueError("only one of site_id and advertising_token can be specified")
         if advertising_token is not None:
@@ -299,11 +313,13 @@ def encrypt_data(data, identity_scope, **kwargs):
         if site_id < 0:
             site_id += (1 << 32)
 
-    iv = kwargs.get("iv")
+    iv = cast(Optional[bytes], kwargs.get("iv"))
     if iv is None:
         iv = os.urandom(12)
 
     payload = int.to_bytes(int(now.timestamp() * 1000), 8, 'big')
+    assert site_id is not None
+    assert key is not None
     payload += int.to_bytes(site_id, 4, 'big')
     payload += data
 
@@ -319,7 +335,7 @@ def _encrypt_data_v1(data, key, iv):
     return int.to_bytes(key.key_id, 4, 'big') + iv + _encrypt(data, iv, key)
 
 
-def decrypt_data(encrypted_data, keys):
+def decrypt_data(encrypted_data: str, keys: EncryptionKeysCollection) -> DecryptedData:
     """Decrypt data encrypted with encrypt_data().
 
     Args:
@@ -433,7 +449,7 @@ class DecryptedToken:
         site_key_site_id (int): site ID of the site key which the token is encrypted with
     """
 
-    def __init__(self, uid2, established, site_id, site_key_site_id):
+    def __init__(self, uid2: str, established: dt.datetime, site_id: int, site_key_site_id: int) -> None:
         self.uid2 = uid2
         self.established = established
         self.site_id = site_id
@@ -448,6 +464,6 @@ class DecryptedData:
         encrypted_at (datetime): UTC date/time for when the data was encrypted
     """
 
-    def __init__(self, data, encrypted_at):
+    def __init__(self, data: bytes, encrypted_at: dt.datetime) -> None:
         self.data = data
         self.encrypted_at = encrypted_at

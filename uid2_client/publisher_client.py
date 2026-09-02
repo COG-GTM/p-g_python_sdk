@@ -5,14 +5,23 @@ Do not use this module directly, import through uid2_client module instead, e.g.
 >>> from uid2_client import Uid2PublisherClient
 """
 
+from __future__ import annotations
+
+import base64
 import datetime as dt
 from datetime import timezone
-
-
 from .encryption import _decrypt_gcm
-from .request_response_util import *
+from .identity_tokens import IdentityTokens
+from .request_response_util import (
+    DEFAULT_TIMEOUT_SECONDS,
+    auth_headers,
+    make_v2_request,
+    parse_v2_response,
+    post,
+)
 from .token_generate_response import TokenGenerateResponse
 from .token_refresh_response import TokenRefreshResponse
+from .token_generate_input import TokenGenerateInput
 from .input_util import base64_to_byte_array
 
 
@@ -34,13 +43,16 @@ class Uid2PublisherClient:
             >>> new_token = client.refresh_token(response.get_identity())
     """
 
-    def __init__(self, base_url, auth_key, secret_key):
+    def __init__(self, base_url: str, auth_key: str, secret_key: str,
+                 timeout: int = DEFAULT_TIMEOUT_SECONDS, retries: int = 0) -> None:
         """Create a new Uid2PublisherClient client.
 
         Args:
             base_url (str): base URL for all requests to UID2 services (e.g. 'https://prod.uidapi.com')
             auth_key (str): authorization key for consuming the UID2 services
             secret_key (str): secret key for consuming the UID2 services
+            timeout (int): request timeout in seconds
+            retries (int): number of retries for transient request failures
 
         Note:
             Your authorization key will determine which UID2 services you are allowed to use.
@@ -48,17 +60,20 @@ class Uid2PublisherClient:
         self._base_url = base_url
         self._auth_key = auth_key
         self._secret_key = base64.b64decode(secret_key)
+        self._timeout = timeout
+        self._retries = retries
 
-    def generate_token(self, token_generate_input):
+    def generate_token(self, token_generate_input: TokenGenerateInput) -> TokenGenerateResponse:
         req, nonce = make_v2_request(self._secret_key, dt.datetime.now(tz=timezone.utc),
                                      token_generate_input.get_as_json_string().encode())
-        resp = post(self._base_url, '/v2/token/generate', headers=auth_headers(self._auth_key), data=req)
+        resp = post(self._base_url, '/v2/token/generate', headers=auth_headers(self._auth_key), data=req,
+                    timeout=self._timeout, retries=self._retries)
         resp_body = parse_v2_response(self._secret_key, resp.read(), nonce)
         return TokenGenerateResponse(resp_body)
 
-    def refresh_token(self, current_identity):
+    def refresh_token(self, current_identity: IdentityTokens) -> TokenRefreshResponse:
         resp = post(self._base_url, '/v2/token/refresh', headers=auth_headers(self._auth_key),
-                    data=current_identity.get_refresh_token().encode())
+                    data=current_identity.get_refresh_token().encode(), timeout=self._timeout, retries=self._retries)
         resp_bytes = base64_to_byte_array(resp.read())
         decrypted = _decrypt_gcm(resp_bytes, base64_to_byte_array(current_identity.get_refresh_response_key()))
         return TokenRefreshResponse(decrypted.decode(), dt.datetime.now(tz=timezone.utc))

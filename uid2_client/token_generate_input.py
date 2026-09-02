@@ -1,6 +1,6 @@
 import json
 from .identity_type import IdentityType
-from .input_util import *
+from .input_util import get_base64_encoded_hash, is_phone_number_normalized, normalize_email_string
 
 
 class TokenGenerateInput:

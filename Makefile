@@ -29,4 +29,4 @@ docker:
 wheel:
 	docker run -t -w $(PWD) -v $(PWD):$(PWD) -u `id -u`:`id -g` $(DOCKERIMAGE) python3 setup.py bdist_wheel
 
-.PHONY: test shell example example_client example_auto_refresh example_encryption docker wheel
+.PHONY: test shell examples example_client example_auto_refresh example_encryption example_sharing example_publisher docker wheel

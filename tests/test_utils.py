@@ -54,11 +54,11 @@ def key_set_to_json_for_sharing(keys):
 def key_set_to_json_for_sharing_with_header(default_keyset, caller_site_id, keys):
     return """{{
                     "body": {{
-                        "caller_site_id": {0}, 
+                        "caller_site_id": {},
                         "master_keyset_id": 1,
                         "token_expiry_seconds": 86400,
-                        {1}
-                        "keys": [{2}        
+                        {}
+                        "keys": [{}
                         ]
                     }}
                 }}""".format(caller_site_id, default_keyset, ",\n".join([format_key(x) for x in keys]))
@@ -66,13 +66,13 @@ def key_set_to_json_for_sharing_with_header(default_keyset, caller_site_id, keys
 
 def format_key(key: EncryptionKey):
     return """
-                            {{ 
-                                "id": {0},
-                                {1} 
-                                "created": {2},
-                                "activates": {3},
-                                "expires": {4},
-                                "secret": "{5}"
+                            {{
+                                "id": {},
+                                {}
+                                "created": {},
+                                "activates": {},
+                                "expires": {},
+                                "secret": "{}"
                             }}""".format(key.key_id,
                                          "" if key.keyset_id is None else '"keyset_id": ' + str(key.keyset_id) + ",",
                                          int(key.created.timestamp()),

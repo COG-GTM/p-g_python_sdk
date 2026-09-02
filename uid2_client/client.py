@@ -5,6 +5,9 @@ Do not use this module directly, import through uid2_client module instead, e.g.
 >>> from uid2_client import Uid2Client
 """
 
+from __future__ import annotations
+
+import base64
 import datetime as dt
 from datetime import timezone
 import json
@@ -12,10 +15,17 @@ import json
 from uid2_client import encryption
 from .keys import EncryptionKey, EncryptionKeysCollection
 from .identity_scope import IdentityScope
-from .request_response_util import *
+from .encryption import DecryptedToken
+from .request_response_util import (
+    DEFAULT_TIMEOUT_SECONDS,
+    auth_headers,
+    make_v2_request,
+    parse_v2_response,
+    post,
+)
 
 
-def _make_dt(timestamp):
+def _make_dt(timestamp: int) -> dt.datetime:
     return dt.datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
 
@@ -40,13 +50,16 @@ class Uid2Client:
         >>> uid2 = decrypt('some-ad-token', keys).uid2
     """
 
-    def __init__(self, base_url, auth_key, secret_key):
+    def __init__(self, base_url: str, auth_key: str, secret_key: str,
+                 timeout: int = DEFAULT_TIMEOUT_SECONDS, retries: int = 0) -> None:
         """Create a new Uid2Client client.
 
         Args:
             base_url (str): base URL for all requests to UID2 services (e.g. 'https://prod.uidapi.com')
             auth_key (str): authorization key for consuming the UID2 services
             secret_key (str): secret key for consuming the UID2 services
+            timeout (int): request timeout in seconds
+            retries (int): number of retries for transient request failures
 
         Note:
             Your authorization key will determine which UID2 services you are allowed to use.
@@ -54,22 +67,26 @@ class Uid2Client:
         self._base_url = base_url
         self._auth_key = auth_key
         self._secret_key = base64.b64decode(secret_key)
-        self._identity_scope = None
-        self._keys = None
+        self._timeout = timeout
+        self._retries = retries
+        self._identity_scope: IdentityScope | None = None
+        self._keys: EncryptionKeysCollection | None = None
 
     @classmethod
-    def create_uid2(cls, base_url, auth_key, secret_key):
-        client = cls(base_url, auth_key, secret_key)
+    def create_uid2(cls, base_url: str, auth_key: str, secret_key: str,
+                    timeout: int = DEFAULT_TIMEOUT_SECONDS, retries: int = 0) -> Uid2Client:
+        client = cls(base_url, auth_key, secret_key, timeout=timeout, retries=retries)
         client._identity_scope = IdentityScope.UID2
         return client
 
     @classmethod
-    def create_euid(cls, base_url, auth_key, secret_key):
-        client = cls(base_url, auth_key, secret_key)
+    def create_euid(cls, base_url: str, auth_key: str, secret_key: str,
+                    timeout: int = DEFAULT_TIMEOUT_SECONDS, retries: int = 0) -> Uid2Client:
+        client = cls(base_url, auth_key, secret_key, timeout=timeout, retries=retries)
         client._identity_scope = IdentityScope.EUID
         return client
 
-    def refresh_keys(self):
+    def refresh_keys(self) -> EncryptionKeysCollection:
         """Get the latest encryption keys for advertising tokens.
 
         This will synchronously connect to the corresponding UID2 service and fetch the latest
@@ -80,16 +97,17 @@ class Uid2Client:
             EncryptionKeysCollection containing the keys
         """
         req, nonce = make_v2_request(self._secret_key, dt.datetime.now(tz=timezone.utc))
-        resp = post(self._base_url, '/v2/key/sharing', headers=auth_headers(self._auth_key), data=req)
+        resp = post(self._base_url, '/v2/key/sharing', headers=auth_headers(self._auth_key), data=req,
+                    timeout=self._timeout, retries=self._retries)
         resp_body = json.loads(parse_v2_response(self._secret_key, resp.read(), nonce)).get('body')
         self._keys = self._parse_keys_json(resp_body)
         return self._keys
 
-    def refresh_json(self, json_str):
+    def refresh_json(self, json_str: str) -> EncryptionKeysCollection:
         body = json.loads(json_str)
         return self._parse_keys_json(body['body'])
 
-    def encrypt(self, uid2, keyset_id=None):
+    def encrypt(self, uid2: str, keyset_id: int | None = None) -> str:
         """ Encrypt an UID2 into a sharing token
 
             Args:
@@ -99,9 +117,13 @@ class Uid2Client:
 
             Returns (str): Sharing Token
             """
+        if self._keys is None:
+            raise Uid2ClientError("no keys loaded; call refresh_keys() or refresh_json() first")
+        if self._identity_scope is None:
+            raise Uid2ClientError("client was not created via Uid2ClientFactory/EuidClientFactory")
         return encryption.encrypt(uid2, self._identity_scope, self._keys, keyset_id)
 
-    def decrypt(self, token):
+    def decrypt(self, token: str) -> DecryptedToken:
         """Decrypt advertising token to extract UID2 details.
 
             Args:
@@ -116,9 +138,11 @@ class Uid2Client:
                 EncryptionError: if token version is not supported, the token has expired,
                                  or no required decryption keys present in the keys collection
         """
+        if self._keys is None:
+            raise Uid2ClientError("no keys loaded; call refresh_keys() or refresh_json() first")
         return encryption.decrypt(token, self._keys)
 
-    def _parse_keys_json(self, resp_body):
+    def _parse_keys_json(self, resp_body: dict) -> EncryptionKeysCollection:
         keys = []
         for key in resp_body["keys"]:
             keyset_id = None
