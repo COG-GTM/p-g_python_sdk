@@ -291,7 +291,8 @@ def encrypt_data(data: bytes, identity_scope: IdentityScope, **kwargs: object) -
     if keys is not None and key is not None:
         raise ValueError("only one of keys and key can be specified")
     if key is None:
-        assert keys is not None
+        if keys is None:
+            raise ValueError("one of key or keys must be specified")
         site_id = cast(Optional[int], kwargs.get("site_id"))
         site_key_site_id = site_id
         advertising_token = cast(Optional[str], kwargs.get("advertising_token"))

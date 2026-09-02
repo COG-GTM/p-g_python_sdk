@@ -75,7 +75,7 @@ class PublisherUid2IntegrationTests(unittest.TestCase):
         if cls.UID2_BASE_URL and cls.UID2_API_KEY and cls.UID2_SECRET_KEY:
             cls.publisher_client = Uid2PublisherClient(cls.UID2_BASE_URL, cls.UID2_API_KEY, cls.UID2_SECRET_KEY)
         else:
-            raise unittest.SkipTest("set EUID_BASE_URL/EUID_API_KEY/EUID_SECRET_KEY to run integration tests")
+            raise unittest.SkipTest("set UID2_BASE_URL/UID2_API_KEY/UID2_SECRET_KEY to run integration tests")
 
     # this test requires these env vars to be configured: UID2_BASE_URL, UID2_API_KEY, UID2_SECRET_KEY
     def test_integration_generate_and_refresh(self):
@@ -187,9 +187,9 @@ class PublisherUid2IntegrationTests(unittest.TestCase):
         with self.assertRaises(HTTPError):
             bad_secret_client.generate_token(TokenGenerateInput.from_email("test@example.com"))
 
-        Uid2PublisherClient(self.UID2_BASE_URL, "not-real-key", self.UID2_SECRET_KEY)
+        bad_api_client = Uid2PublisherClient(self.UID2_BASE_URL, "not-real-key", self.UID2_SECRET_KEY)
         with self.assertRaises(HTTPError):
-            bad_secret_client.generate_token(TokenGenerateInput.from_email("test@example.com"))
+            bad_api_client.generate_token(TokenGenerateInput.from_email("test@example.com"))
 
 
 if __name__ == '__main__':

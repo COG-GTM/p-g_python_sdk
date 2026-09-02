@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
+import email.message
+import io
 import os
 import time
 import urllib.error
@@ -15,15 +17,16 @@ from uid2_client.encryption import _encrypt_gcm, _decrypt_gcm
 DEFAULT_TIMEOUT_SECONDS = 30
 
 
-class Uid2HttpError(Exception):
+class Uid2HttpError(urllib.error.HTTPError):
     """Raised when the UID2 service returns a non-2xx HTTP response."""
 
     def __init__(self, status: int, reason: str, body: bytes, url: str):
-        super().__init__(f"UID2 request to {url} failed with HTTP {status}: {reason}")
-        self.status = status
-        self.reason = reason
+        super().__init__(url, status, reason, email.message.Message(), io.BytesIO(body))
         self.body = body
         self.url = url
+
+    def __str__(self) -> str:
+        return f"UID2 request to {self.url} failed with HTTP {self.status}: {self.reason}"
 
 
 def _make_url(base_url: str, path: str) -> str:

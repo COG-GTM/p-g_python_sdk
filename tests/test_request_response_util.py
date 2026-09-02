@@ -26,8 +26,12 @@ class TestPost(unittest.TestCase):
         with patch("uid2_client.request_response_util.request.urlopen", side_effect=error):
             with self.assertRaises(Uid2HttpError) as context:
                 post("https://example.com", "/path", {}, b"data")
+        self.assertIsInstance(context.exception, HTTPError)
+        self.assertEqual(context.exception.status, context.exception.code)
         self.assertEqual(500, context.exception.status)
         self.assertEqual(b"body", context.exception.body)
+        self.assertEqual("UID2 request to https://example.com/path failed with HTTP 500: server error",
+                         str(context.exception))
 
     def test_http_503_retries_then_returns_success(self):
         error = HTTPError("https://example.com/path", 503, "unavailable", {}, io.BytesIO(b""))

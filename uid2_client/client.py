@@ -117,8 +117,10 @@ class Uid2Client:
 
             Returns (str): Sharing Token
             """
-        assert self._identity_scope is not None
-        assert self._keys is not None
+        if self._keys is None:
+            raise Uid2ClientError("no keys loaded; call refresh_keys() or refresh_json() first")
+        if self._identity_scope is None:
+            raise Uid2ClientError("client was not created via Uid2ClientFactory/EuidClientFactory")
         return encryption.encrypt(uid2, self._identity_scope, self._keys, keyset_id)
 
     def decrypt(self, token: str) -> DecryptedToken:
@@ -136,7 +138,8 @@ class Uid2Client:
                 EncryptionError: if token version is not supported, the token has expired,
                                  or no required decryption keys present in the keys collection
         """
-        assert self._keys is not None
+        if self._keys is None:
+            raise Uid2ClientError("no keys loaded; call refresh_keys() or refresh_json() first")
         return encryption.decrypt(token, self._keys)
 
     def _parse_keys_json(self, resp_body: dict) -> EncryptionKeysCollection:

@@ -37,6 +37,11 @@ class TestClient(unittest.TestCase):
         response_payload = key_set_to_json_for_sharing([master_key, site_key]).encode()
         return self._make_post_response(data, response_payload)
 
+    def test_decrypt_without_loaded_keys_raises_client_error(self):
+        client = Uid2ClientFactory.create("base_url", "api_key", client_secret)
+        with self.assertRaises(Uid2ClientError):
+            client.decrypt("x")
+
 
     def _validate_master_and_site_key(self, keys):
         self.assertEqual(len(keys.values()), 2)
