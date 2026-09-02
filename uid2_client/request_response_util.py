@@ -4,7 +4,8 @@ import time
 import urllib.error
 from urllib import request
 
-import pkg_resources
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 
 from uid2_client.encryption import _encrypt_gcm, _decrypt_gcm
 
@@ -28,8 +29,8 @@ def _make_url(base_url, path):
 
 def auth_headers(auth_key):
     try:
-        version = pkg_resources.get_distribution("uid2_client").version
-    except Exception:
+        version = _pkg_version("uid2_client")
+    except PackageNotFoundError:
         version = "non-packaged-mode"
 
     return {'Authorization': 'Bearer ' + auth_key,

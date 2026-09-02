@@ -5,6 +5,7 @@ Do not use this module directly, import through uid2_client module instead, e.g.
 >>> from uid2_client import Uid2Client
 """
 
+import base64
 import datetime as dt
 from datetime import timezone
 import json
@@ -12,7 +13,13 @@ import json
 from uid2_client import encryption
 from .keys import EncryptionKey, EncryptionKeysCollection
 from .identity_scope import IdentityScope
-from .request_response_util import *
+from .request_response_util import (
+    DEFAULT_TIMEOUT_SECONDS,
+    auth_headers,
+    make_v2_request,
+    parse_v2_response,
+    post,
+)
 
 
 def _make_dt(timestamp):

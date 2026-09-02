@@ -5,12 +5,19 @@ Do not use this module directly, import through uid2_client module instead, e.g.
 >>> from uid2_client import Uid2PublisherClient
 """
 
+import base64
 import datetime as dt
 from datetime import timezone
 
 
 from .encryption import _decrypt_gcm
-from .request_response_util import *
+from .request_response_util import (
+    DEFAULT_TIMEOUT_SECONDS,
+    auth_headers,
+    make_v2_request,
+    parse_v2_response,
+    post,
+)
 from .token_generate_response import TokenGenerateResponse
 from .token_refresh_response import TokenRefreshResponse
 from .input_util import base64_to_byte_array
