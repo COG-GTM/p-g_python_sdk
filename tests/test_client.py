@@ -1,3 +1,8 @@
+"""Client tests."""
+
+# Existing tests intentionally use shared wildcard fixtures.
+# ruff: noqa: F403, F405, F841
+
 import unittest
 from unittest.mock import patch
 

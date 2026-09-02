@@ -1,8 +1,6 @@
 import sys
 
-from uid2_client import Uid2PublisherClient
-from uid2_client import TokenGenerateResponse
-from uid2_client import TokenGenerateInput
+from uid2_client import TokenGenerateInput, Uid2PublisherClient
 
 
 def _usage():

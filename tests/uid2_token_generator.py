@@ -1,4 +1,5 @@
 import base64
+import datetime as dt
 
 from datetime import timezone
 import os
@@ -7,7 +8,6 @@ from uid2_client.advertising_token_version import AdvertisingTokenVersion
 from uid2_client.encryption import _encrypt_data_v1, _encrypt_gcm, _PayloadType
 from uid2_client.identity_scope import IdentityScope
 from uid2_client.identity_type import IdentityType
-from uid2_client.keys import *
 from uid2_client.uid2_base64_url_coder import Uid2Base64UrlCoder
 
 
@@ -25,10 +25,11 @@ class Params:
 def default_params():
     return Params()
 
+_DEFAULT_PARAMS = default_params()
 
 class UID2TokenGenerator:
     @staticmethod
-    def generate_uid2_token_v2(id_str, master_key, site_id, site_key, params = default_params(), version=2):
+    def generate_uid2_token_v2(id_str, master_key, site_id, site_key, params=_DEFAULT_PARAMS, version=2):
         id = bytes(id_str, 'utf-8')
         identity = int.to_bytes(site_id, 4, 'big')
         identity += int.to_bytes(len(id), 4, 'big')
@@ -49,12 +50,12 @@ class UID2TokenGenerator:
         return base64.b64encode(token).decode('ascii')
 
     @staticmethod
-    def generate_uid2_token_v3(id_str, master_key, site_id, site_key, params = default_params()):
+    def generate_uid2_token_v3(id_str, master_key, site_id, site_key, params=_DEFAULT_PARAMS):
         return UID2TokenGenerator.generate_uid2_token_with_debug_info(id_str, master_key, site_id, site_key, params,
                                                     AdvertisingTokenVersion.ADVERTISING_TOKEN_V3.value)
 
     @staticmethod
-    def generate_uid2_token_v4(id_str, master_key, site_id, site_key, params = default_params()):
+    def generate_uid2_token_v4(id_str, master_key, site_id, site_key, params=_DEFAULT_PARAMS):
         return UID2TokenGenerator.generate_uid2_token_with_debug_info(id_str, master_key, site_id, site_key, params,
                                                     AdvertisingTokenVersion.ADVERTISING_TOKEN_V4.value)
 

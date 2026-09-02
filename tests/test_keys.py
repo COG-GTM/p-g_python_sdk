@@ -1,3 +1,8 @@
+"""Key tests."""
+
+# Existing tests intentionally use shared wildcard fixtures.
+# ruff: noqa: F403, F405
+
 import datetime as dt
 from datetime import timezone
 import unittest

@@ -1,6 +1,5 @@
 import sys
 
-from uid2_client import EuidClientFactory
 from uid2_client import Uid2ClientFactory
 
 
@@ -8,7 +7,7 @@ from uid2_client import Uid2ClientFactory
 # to demonstrate encryption and decryption for sharers
 
 def _usage():
-    print('Usage: python3 sample_encryption.py <base_url> <auth_key> <secret_key> <raw_uid>', file=sys.stderr)
+    print('Usage: python3 sample_sharing.py <base_url> <auth_key> <secret_key> <raw_uid>', file=sys.stderr)
     sys.exit(1)
 
 

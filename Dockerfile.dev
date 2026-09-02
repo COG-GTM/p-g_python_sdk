@@ -1,3 +1,3 @@
-FROM python:3.6
+FROM python:3.12
 COPY . /build
-RUN pip install --no-cache-dir -e /build[dev]
+RUN pip install --no-cache-dir -e /build && pip install --no-cache-dir ruff coverage

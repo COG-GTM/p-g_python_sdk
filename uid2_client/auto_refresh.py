@@ -4,11 +4,18 @@ Do not use this module directly, import from uid2_client instead, e.g.
 >>> from uid2_client import EncryptionKeysAutoRefresher
 """
 
+from __future__ import annotations
+
 
 import datetime as dt
 from datetime import timezone
 import sys
 import threading
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .keys import EncryptionKeysCollection
+    from .client import Uid2Client
 
 
 class EncryptionKeysAutoRefreshResult:
@@ -23,20 +30,21 @@ class EncryptionKeysAutoRefreshResult:
                                       None if refresh has not completed successfully even once)
         ready (bool): keys have been refreshed at least once (they may no longer be valid though!)
     """
-    def __init__(self, keys, error, last_success):
+    def __init__(self, keys: EncryptionKeysCollection | None, error: tuple | None,
+                 last_success: dt.datetime | None) -> None:
         self.keys = keys
         self.last_error = error
         self.last_success_time = last_success
 
 
     @property
-    def ready(self):
+    def ready(self) -> bool:
         """Returns True if keys have been successfully refreshed at least once, False otherwise."""
         return self.keys is not None
 
 
-    def __repr__(self):
-        return '<{}, {}>'.format(self.keys, self.last_error[1] if self.last_error else None)
+    def __repr__(self) -> str:
+        return f'<{self.keys}, {self.last_error[1] if self.last_error else None}>'
 
 
 class EncryptionKeysAutoRefresher(threading.Thread):
@@ -61,7 +69,8 @@ class EncryptionKeysAutoRefresher(threading.Thread):
     >>>         do_work(result.keys)
     """
 
-    def __init__(self, client, refresh_interval, retry_interval):
+    def __init__(self, client: Uid2Client, refresh_interval: dt.timedelta,
+                 retry_interval: dt.timedelta) -> None:
         """Create a new auto refresher thread.
 
         You will need to call the start() method to actually begin the auto-refresh process.
@@ -81,7 +90,7 @@ class EncryptionKeysAutoRefresher(threading.Thread):
         self._result = EncryptionKeysAutoRefreshResult(None, (RuntimeError, err, None), None)
 
 
-    def current_result(self):
+    def current_result(self) -> EncryptionKeysAutoRefreshResult:
         """Get snapshot of result of auto refreshing.
 
         If the thread is running, it can be updating the result reference in between
@@ -101,7 +110,7 @@ class EncryptionKeysAutoRefresher(threading.Thread):
         return self._result
 
 
-    def run(self):
+    def run(self) -> None:
         """Thread worker function.
 
         Do not call this directly, kick off the thread by using the start() function instead.
@@ -111,12 +120,12 @@ class EncryptionKeysAutoRefresher(threading.Thread):
             self._finished.wait(interval)
 
 
-    def cancel(self):
+    def cancel(self) -> None:
         """Tell the thread to stop."""
         self._finished.set()
 
 
-    def _try_refresh_keys(self):
+    def _try_refresh_keys(self) -> bool:
         """Invoke UID2 client to refresh latest keys from the service."""
         try:
             keys = self._client.refresh_keys()
@@ -127,19 +136,20 @@ class EncryptionKeysAutoRefresher(threading.Thread):
             return False
 
 
-    def _make_error_result(self, err):
+    def _make_error_result(self, err: tuple) -> EncryptionKeysAutoRefreshResult:
         return EncryptionKeysAutoRefreshResult(self._result.keys, err, self._result.last_success_time)
 
 
-    def _make_success_result(self, keys):
+    def _make_success_result(self, keys: EncryptionKeysCollection) -> EncryptionKeysAutoRefreshResult:
         return EncryptionKeysAutoRefreshResult(keys, None, dt.datetime.now(tz=timezone.utc))
 
 
-    def __enter__(self):
+    def __enter__(self) -> EncryptionKeysAutoRefresher:
         self.start()
         return self
 
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type: type[BaseException] | None, exc_value: BaseException | None,
+                 traceback: object | None) -> None:
         self.cancel()
         self.join()

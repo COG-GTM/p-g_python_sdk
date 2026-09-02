@@ -1,4 +1,3 @@
-import base64
 import sys
 
 from uid2_client import Uid2Client, IdentityScope

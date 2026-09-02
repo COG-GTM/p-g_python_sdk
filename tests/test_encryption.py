@@ -1,3 +1,8 @@
+"""Encryption tests."""
+
+# Existing tests intentionally use shared wildcard fixtures and broad setup.
+# ruff: noqa: F403, F405, F841
+
 import unittest
 
 from tests.uid2_token_generator import UID2TokenGenerator, Params
@@ -62,20 +67,23 @@ class TestEncryptionFunctions(unittest.TestCase):
         self.assertEqual(-1, advertising_token_string.find("/"))
 
 
-    def generate_uid2_token_v4(self, uid, master_key, site_id, site_key, params = Params(), identity_type = IdentityType.Email, identity_scope = IdentityScope.UID2):
+    def generate_uid2_token_v4(self, uid, master_key, site_id, site_key, params=None, identity_type=IdentityType.Email,
+                               identity_scope=IdentityScope.UID2):
+        if params is None:
+            params = Params()
         advertising_token = UID2TokenGenerator.generate_uid2_token_v4(uid, master_key, site_id, site_key, params)
         self.validate_advertising_token(advertising_token, identity_scope, identity_type)
         return advertising_token
 
 
     def test_cross_platform_consistency_decrypt(self):
-        crossPlatformAdvertisingToken = "AIAAAACkOqJj9VoxXJNnuX3v-ymceRf8_Av0vA5asOj9YBZJc1kV1vHdmb0AIjlzWnFF-gxIlgXqhRFhPo3iXpugPBl3gv4GKnGkw-Zgm2QqMsDPPLpMCYiWrIUqHPm8hQiq9PuTU-Ba9xecRsSIAN0WCwKLwA_EDVdzmnLJu64dQoeYmuu3u1G2EuTkuMrevmP98tJqSUePKwnfK73-0Zdshw";
+        crossPlatformAdvertisingToken = "AIAAAACkOqJj9VoxXJNnuX3v-ymceRf8_Av0vA5asOj9YBZJc1kV1vHdmb0AIjlzWnFF-gxIlgXqhRFhPo3iXpugPBl3gv4GKnGkw-Zgm2QqMsDPPLpMCYiWrIUqHPm8hQiq9PuTU-Ba9xecRsSIAN0WCwKLwA_EDVdzmnLJu64dQoeYmuu3u1G2EuTkuMrevmP98tJqSUePKwnfK73-0Zdshw"
         # Sunday, 1 January 2023 1:01:01 AM UTC
         referenceTimestampMs = 1672534861000
         # 1 hour before ref timestamp
-        established_ms = referenceTimestampMs - (3600 * 1000);
-        last_refreshed_ms = referenceTimestampMs;
-        token_created_ms = referenceTimestampMs;
+        established_ms = referenceTimestampMs - (3600 * 1000)
+        last_refreshed_ms = referenceTimestampMs
+        token_created_ms = referenceTimestampMs
 
         master_key_created = dt.datetime.fromtimestamp(referenceTimestampMs / 1000, tz=timezone.utc) - dt.timedelta(
             days=1)

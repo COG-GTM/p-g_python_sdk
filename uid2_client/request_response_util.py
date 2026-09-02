@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import base64
+import datetime as dt
 import os
 import time
 import urllib.error
-from urllib import request
-
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
+from typing import IO
+from urllib import request
 
 from uid2_client.encryption import _encrypt_gcm, _decrypt_gcm
 
@@ -23,11 +26,11 @@ class Uid2HttpError(Exception):
         self.url = url
 
 
-def _make_url(base_url, path):
+def _make_url(base_url: str, path: str) -> str:
     return base_url + path
 
 
-def auth_headers(auth_key):
+def auth_headers(auth_key: str) -> dict[str, str]:
     try:
         version = _pkg_version("uid2_client")
     except PackageNotFoundError:
@@ -37,7 +40,7 @@ def auth_headers(auth_key):
             "X-UID2-Client-Version": "uid2-client-python-" + version}
 
 
-def make_v2_request(secret_key, now, data=None):
+def make_v2_request(secret_key: bytes, now: dt.datetime, data: bytes | None = None) -> tuple[bytes, bytes]:
     payload = int.to_bytes(int(now.timestamp() * 1000), 8, 'big')
     nonce = os.urandom(8)
     payload += nonce
@@ -50,14 +53,15 @@ def make_v2_request(secret_key, now, data=None):
     return base64.b64encode(envelope), nonce
 
 
-def parse_v2_response(secret_key, encrypted, nonce):
+def parse_v2_response(secret_key: bytes, encrypted: bytes, nonce: bytes) -> bytes:
     payload = _decrypt_gcm(base64.b64decode(encrypted), secret_key)
     if nonce != payload[8:16]:
         raise ValueError("nonce mismatch")
     return payload[16:]
 
 
-def post(base_url, path, headers, data, timeout=DEFAULT_TIMEOUT_SECONDS, retries=0, backoff_seconds=0.5):
+def post(base_url: str, path: str, headers: dict[str, str], data: bytes,
+         timeout: int = DEFAULT_TIMEOUT_SECONDS, retries: int = 0, backoff_seconds: float = 0.5) -> IO[bytes]:
     url = _make_url(base_url, path)
     req = request.Request(url, headers=headers, method='POST', data=data)
     for attempt in range(retries + 1):
@@ -73,4 +77,4 @@ def post(base_url, path, headers, data, timeout=DEFAULT_TIMEOUT_SECONDS, retries
                 time.sleep(backoff_seconds * 2 ** attempt)
                 continue
             raise
-    raise RuntimeError('request attempts exhausted')
+    raise RuntimeError("request attempts exhausted")

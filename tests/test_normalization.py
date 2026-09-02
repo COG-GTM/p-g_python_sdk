@@ -1,11 +1,13 @@
+"""Normalization tests."""
+
+# Existing tests intentionally use shared wildcard fixtures.
+# ruff: noqa: F403, F405
+
 import json
 import unittest
-from unittest.mock import patch
 
 from uid2_client import TokenGenerateInput
 from uid2_client.input_util import *
-import random
-import string
 
 
 class InputNormalizationTests(unittest.TestCase):
@@ -108,4 +110,3 @@ class InputNormalizationTests(unittest.TestCase):
         for s in test_cases:
             print(f"Testing phone number '{s}'")
             self.assertTrue(is_phone_number_normalized(s))
-
