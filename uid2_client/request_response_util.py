@@ -1,10 +1,25 @@
 import base64
 import os
+import time
+import urllib.error
 from urllib import request
 
 import pkg_resources
 
 from uid2_client.encryption import _encrypt_gcm, _decrypt_gcm
+
+DEFAULT_TIMEOUT_SECONDS = 30
+
+
+class Uid2HttpError(Exception):
+    """Raised when the UID2 service returns a non-2xx HTTP response."""
+
+    def __init__(self, status: int, reason: str, body: bytes, url: str):
+        super().__init__(f"UID2 request to {url} failed with HTTP {status}: {reason}")
+        self.status = status
+        self.reason = reason
+        self.body = body
+        self.url = url
 
 
 def _make_url(base_url, path):
@@ -41,6 +56,20 @@ def parse_v2_response(secret_key, encrypted, nonce):
     return payload[16:]
 
 
-def post(base_url, path, headers, data):
-    req = request.Request(_make_url(base_url, path), headers=headers, method='POST', data=data)
-    return request.urlopen(req)
+def post(base_url, path, headers, data, timeout=DEFAULT_TIMEOUT_SECONDS, retries=0, backoff_seconds=0.5):
+    url = _make_url(base_url, path)
+    req = request.Request(url, headers=headers, method='POST', data=data)
+    for attempt in range(retries + 1):
+        try:
+            return request.urlopen(req, timeout=timeout)
+        except urllib.error.HTTPError as exc:
+            if (exc.code >= 500 or exc.code == 429) and attempt < retries:
+                time.sleep(backoff_seconds * 2 ** attempt)
+                continue
+            raise Uid2HttpError(exc.code, exc.reason, exc.read(), url) from exc
+        except (urllib.error.URLError, TimeoutError):
+            if attempt < retries:
+                time.sleep(backoff_seconds * 2 ** attempt)
+                continue
+            raise
+    raise RuntimeError('request attempts exhausted')

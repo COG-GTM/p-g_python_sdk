@@ -40,13 +40,15 @@ class Uid2Client:
         >>> uid2 = decrypt('some-ad-token', keys).uid2
     """
 
-    def __init__(self, base_url, auth_key, secret_key):
+    def __init__(self, base_url, auth_key, secret_key, timeout=DEFAULT_TIMEOUT_SECONDS, retries=0):
         """Create a new Uid2Client client.
 
         Args:
             base_url (str): base URL for all requests to UID2 services (e.g. 'https://prod.uidapi.com')
             auth_key (str): authorization key for consuming the UID2 services
             secret_key (str): secret key for consuming the UID2 services
+            timeout (int): request timeout in seconds
+            retries (int): number of retries for transient request failures
 
         Note:
             Your authorization key will determine which UID2 services you are allowed to use.
@@ -54,18 +56,20 @@ class Uid2Client:
         self._base_url = base_url
         self._auth_key = auth_key
         self._secret_key = base64.b64decode(secret_key)
+        self._timeout = timeout
+        self._retries = retries
         self._identity_scope = None
         self._keys = None
 
     @classmethod
-    def create_uid2(cls, base_url, auth_key, secret_key):
-        client = cls(base_url, auth_key, secret_key)
+    def create_uid2(cls, base_url, auth_key, secret_key, timeout=DEFAULT_TIMEOUT_SECONDS, retries=0):
+        client = cls(base_url, auth_key, secret_key, timeout=timeout, retries=retries)
         client._identity_scope = IdentityScope.UID2
         return client
 
     @classmethod
-    def create_euid(cls, base_url, auth_key, secret_key):
-        client = cls(base_url, auth_key, secret_key)
+    def create_euid(cls, base_url, auth_key, secret_key, timeout=DEFAULT_TIMEOUT_SECONDS, retries=0):
+        client = cls(base_url, auth_key, secret_key, timeout=timeout, retries=retries)
         client._identity_scope = IdentityScope.EUID
         return client
 
@@ -80,7 +84,8 @@ class Uid2Client:
             EncryptionKeysCollection containing the keys
         """
         req, nonce = make_v2_request(self._secret_key, dt.datetime.now(tz=timezone.utc))
-        resp = post(self._base_url, '/v2/key/sharing', headers=auth_headers(self._auth_key), data=req)
+        resp = post(self._base_url, '/v2/key/sharing', headers=auth_headers(self._auth_key), data=req,
+                    timeout=self._timeout, retries=self._retries)
         resp_body = json.loads(parse_v2_response(self._secret_key, resp.read(), nonce)).get('body')
         self._keys = self._parse_keys_json(resp_body)
         return self._keys

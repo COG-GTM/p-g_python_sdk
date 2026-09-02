@@ -34,13 +34,15 @@ class Uid2PublisherClient:
             >>> new_token = client.refresh_token(response.get_identity())
     """
 
-    def __init__(self, base_url, auth_key, secret_key):
+    def __init__(self, base_url, auth_key, secret_key, timeout=DEFAULT_TIMEOUT_SECONDS, retries=0):
         """Create a new Uid2PublisherClient client.
 
         Args:
             base_url (str): base URL for all requests to UID2 services (e.g. 'https://prod.uidapi.com')
             auth_key (str): authorization key for consuming the UID2 services
             secret_key (str): secret key for consuming the UID2 services
+            timeout (int): request timeout in seconds
+            retries (int): number of retries for transient request failures
 
         Note:
             Your authorization key will determine which UID2 services you are allowed to use.
@@ -48,17 +50,20 @@ class Uid2PublisherClient:
         self._base_url = base_url
         self._auth_key = auth_key
         self._secret_key = base64.b64decode(secret_key)
+        self._timeout = timeout
+        self._retries = retries
 
     def generate_token(self, token_generate_input):
         req, nonce = make_v2_request(self._secret_key, dt.datetime.now(tz=timezone.utc),
                                      token_generate_input.get_as_json_string().encode())
-        resp = post(self._base_url, '/v2/token/generate', headers=auth_headers(self._auth_key), data=req)
+        resp = post(self._base_url, '/v2/token/generate', headers=auth_headers(self._auth_key), data=req,
+                    timeout=self._timeout, retries=self._retries)
         resp_body = parse_v2_response(self._secret_key, resp.read(), nonce)
         return TokenGenerateResponse(resp_body)
 
     def refresh_token(self, current_identity):
         resp = post(self._base_url, '/v2/token/refresh', headers=auth_headers(self._auth_key),
-                    data=current_identity.get_refresh_token().encode())
+                    data=current_identity.get_refresh_token().encode(), timeout=self._timeout, retries=self._retries)
         resp_bytes = base64_to_byte_array(resp.read())
         decrypted = _decrypt_gcm(resp_bytes, base64_to_byte_array(current_identity.get_refresh_response_key()))
         return TokenRefreshResponse(decrypted.decode(), dt.datetime.now(tz=timezone.utc))
